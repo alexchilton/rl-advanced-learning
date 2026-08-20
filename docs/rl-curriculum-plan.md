@@ -282,7 +282,48 @@ Three guided walkthroughs only, where inline plots earn their keep:
 
 ## Papers
 
-`papers/` organised by the same tiers, each paper with a `notes.md` linking equations to our line numbers.
+**The point of this directory is not the PDFs. It is: what did this paper actually solve?**
+
+A paper's contribution is a problem that nothing before it could handle.
+Read as prose that is abstract; run as a failing case that a one-line change fixes, it is obvious.
+So every paper gets a `demo.py` structured the same way:
+
+1. **The problem, failing.** The prior method, on the smallest environment that breaks it. Runs in seconds. You watch it fail.
+2. **The fix.** The paper's idea, changed as little as possible from step 1. Ideally one function.
+3. **The same measurement on both**, side by side, exact where the environment allows.
+
+If the paper's claim cannot be made to show up on a toy problem, that is worth knowing too, and the notes say so rather than pretending.
+
+Layout per paper: `papers/<tier>/<key>/` containing `paper.pdf` (gitignored), `notes.md`, and `demo.py`.
+
+The demos, and the failing case each one starts from:
+
+| Paper | The problem, failing | The fix |
+| --- | --- | --- |
+| Ng et al. 1999, shaping | A reasonable-looking progress bonus makes the optimal policy avoid the goal forever | The potential-based form. Already built, in `GridWorld` |
+| van Hasselt 2010, Double Q | Q-learning's max over noisy estimates is biased upward, so it prefers a losing action on a stochastic MDP | Two Q tables, one selects and the other evaluates |
+| Mnih 2015, DQN | Online Q-learning with a network on correlated sequential data diverges | Replay buffer and target network, added one at a time so you can see which does what |
+| Schaul 2015, PER | Uniform replay spends almost every sample on transitions with no TD error | Sample by priority, correct with importance weights |
+| Schulman 2015, GAE | TD(0) is biased, Monte Carlo has huge variance, and neither is best | The lambda dial, swept, with the optimum in the middle |
+| Schulman 2017, PPO | A single large policy update collapses the policy and it never recovers | The clipped ratio, and what happens when you raise the epoch count until clipping cannot hold it |
+| Lillicrap 2015, DDPG | Q-learning has no `max` over a continuous action space | A deterministic actor that provides the argmax |
+| Fujimoto 2018, TD3 | The critic's overestimation compounds into the actor and the policy exploits its own critic's error | Twin critics, delayed actor, target smoothing, ablated separately |
+| Haarnoja 2018, SAC | The policy becomes deterministic early and stops exploring | Entropy in the objective, with the temperature swept and then tuned automatically |
+| van Hasselt 2016, PopArt | Multiply the reward by 1000. Nothing else changes. The agent stops learning | Normalise the value targets, preserving the outputs |
+| Ross 2011, DAgger | Behaviour cloning drifts off the expert's states and its errors compound | Query the expert on the states the learner actually visits |
+| Kumar 2020, CQL | Offline Q-learning assigns high value to actions the dataset never contains, and the policy chooses them | The conservative penalty on out-of-distribution actions |
+| Andrychowicz 2017, HER | A sparse-reward task where the goal is never reached, so there is nothing to learn from | Relabel failures as successes for the goal that was reached |
+| Burda 2018, RND | `Chain(n=20)` needs 500,000 random episodes to see the reward once | An intrinsic bonus for novelty |
+| Baird 1995 | Off-policy, bootstrapping and linear function approximation, on a problem whose true value is exactly representable. It diverges anyway | Remove any one of the three |
+| Shao 2024, GRPO | PPO needs a value network, and the value network is most of what goes wrong | Group-relative baseline, no critic |
+| Rafailov 2023, DPO | RLHF needs a reward model, a sampling loop and a KL penalty | A closed form that needs none of them |
+| Gao 2022, over-optimisation | Optimise the reward model harder. Modelled reward keeps rising, true reward turns over | Nothing fixes it. Early stopping and KL control manage it |
+| Henderson 2017 | The same configuration, ten seeds, spanning "solved" to "never learned" | Report median and interquartile range, or report nothing |
+
+Each `notes.md` has three sections: the idea in one paragraph, an equations-to-code table mapping the paper's numbered equations to `file:line` in this repo, and what the paper got wrong or what superseded it.
+
+PDFs are fetched from arXiv and other public sources by `papers/fetch.py` and are gitignored, since the repo is public.
+Original author code is linked, not vendored, with a note on whether it still runs.
 
 Tabular: Sutton 1988 (TD), Watkins 1989 (Q-learning), Rummery & Niranjan 1994 (SARSA), Sutton 1990 (Dyna), van Hasselt 2010 (Double Q), Ng et al. 1999 (potential-based shaping).
 
