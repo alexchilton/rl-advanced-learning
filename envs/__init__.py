@@ -16,7 +16,7 @@ The interface is Gymnasium's throughout:
     obs, reward, terminated, truncated, info = env.step(action)
 """
 
-from envs import solvers
+from envs import datasets, solvers
 from envs.bandit import Bandit
 from envs.chain import Baird, Chain
 from envs.cliff import CliffWalking
@@ -34,5 +34,6 @@ __all__ = [
     "PointMass",
     "Racetrack",
     "TabularEnv",
+    "datasets",
     "solvers",
 ]
