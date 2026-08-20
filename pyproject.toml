@@ -13,7 +13,7 @@ build-backend = "setuptools.build_meta"
 # There will be dozens of those files and the boilerplate would be the first
 # thing you read in each one.
 [tool.setuptools]
-packages = ["envs", "diagnostics"]
+packages = ["envs", "diagnostics", "algos"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

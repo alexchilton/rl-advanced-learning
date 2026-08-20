@@ -22,6 +22,7 @@ from envs.chain import Baird, Chain
 from envs.cliff import CliffWalking
 from envs.gridworld import GridWorld
 from envs.pointmass import PointMass
+from envs.racetrack import Racetrack
 from envs.tabular import TabularEnv
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "CliffWalking",
     "GridWorld",
     "PointMass",
+    "Racetrack",
     "TabularEnv",
     "solvers",
 ]
