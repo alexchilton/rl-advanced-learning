@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.qodo/
+.vscode/
+
+# Session state and local tool config. Contains traces; never goes to a public repo.
+.claude/
+
+# macOS
+.DS_Store
+
+# Papers are fetched, not vendored. `papers/fetch.py` downloads them from arXiv
+# and other public sources; the notes and the index are tracked, the PDFs are not.
+papers/**/*.pdf
+
+# Run artefacts
+data/logs/
+data/runs/
+mlruns/
+models/*.pt
+models/*.pth
+*.png
+!docs/**/*.png

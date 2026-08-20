@@ -1,0 +1,18 @@
+# Core. Everything in envs/, diagnostics/ and the tabular algorithms needs only numpy.
+numpy
+pytest
+
+# Needed from Tier 2 (DQN) onwards.
+torch
+matplotlib
+
+# Run tracking. The local MLflow service on :5003 is where comparisons live.
+mlflow
+
+# The comparability track: every algorithm also runs on the standard benchmarks.
+gymnasium
+
+# Optional, and never imported by a core file. Install if the relevant tier needs it.
+#   gymnasium[box2d]   LunarLander. Compiles from source more often than not.
+#   mujoco             HalfCheetah / Hopper for the continuous-control track.
+#   minari             Standard offline RL datasets.

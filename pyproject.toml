@@ -1,0 +1,31 @@
+[project]
+name = "rl-advanced-learning"
+version = "0.1.0"
+description = "RL: everything -- tools, tips and cookbook. Smallest working examples, with the failure modes attached."
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Installed editable (`pip install -e .`) so that `python algos/ppo.py` works from
+# any directory without a sys.path preamble at the top of every runnable file.
+# There will be dozens of those files and the boilerplate would be the first
+# thing you read in each one.
+[tool.setuptools]
+packages = ["envs", "diagnostics"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: takes more than a few seconds; deselect with -m 'not slow'",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
