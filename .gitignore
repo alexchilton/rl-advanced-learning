@@ -30,3 +30,6 @@ models/*.pt
 models/*.pth
 *.png
 !docs/**/*.png
+
+# Kaggle notebook build artefacts
+kaggle/**/__pycache__/
