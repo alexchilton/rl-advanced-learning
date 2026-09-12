@@ -29,6 +29,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Courses do not agree on what the checker object is called: most use q_1, the
+# Intermediate ML course uses step_1, and some have sub-parts like step_1.a.
+# Matching only `q_` made this tool report a whole course clean that it could
+# not actually see -- the exact false green light it exists to prevent.
+CHECK_CALL = re.compile(r"\b(q_|step_)(\d+)(?:\.[a-c])?\.check\(")
+
 
 def is_bare_check(text):
     """True if the cell holds nothing but check/hint/solution calls and comments.
@@ -42,7 +48,7 @@ def is_bare_check(text):
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        if re.fullmatch(r"q_\d+(\.[ab])?\.(check|hint|solution)\([^)]*\)", line):
+        if re.fullmatch(r"(?:q_|step_)\d+(\.[a-c])?\.(check|hint|solution)\([^)]*\)", line):
             continue
         return False
     return True
@@ -92,10 +98,10 @@ def main():
             if cb["cell_type"] != "code":
                 continue
             tb = "".join(cb["source"])
-            m = re.search(r"q_(\d+)\.check\(\)", tb)
+            m = CHECK_CALL.search(tb)
             if not m or tb != "".join(cs["source"]):
                 continue
-            q = int(m.group(1))
+            q = int(m.group(2))
             if q in allowed.get(ex, set()):
                 continue
             if is_bare_check(tb):
