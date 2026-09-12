@@ -15,7 +15,8 @@
     "seaborn"
   ],
   "dataset_sources": [
-    "alexisbcook/data-for-datavis"
+    "alexisbcook/data-for-datavis",
+    "anastasiafineeva/data-for-datavis"
   ],
   "kernel_sources": [],
   "competition_sources": [],

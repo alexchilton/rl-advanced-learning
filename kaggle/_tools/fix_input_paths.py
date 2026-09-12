@@ -69,6 +69,34 @@ for _src in _mounted:
         if not _os.path.exists(_cdst):
             _os.symlink(_child, _cdst)
 _os.chdir(_here)
+
+
+def _safe_symlink(src, dst):
+    """Stand in for os.symlink in the course setup cells.
+
+    Several exercises do
+
+        if not os.path.exists("../input/x.csv"):
+            os.symlink("../input/<slug>/x.csv", "../input/x.csv")
+
+    which breaks two ways once ../input is the farm. If the shim already
+    exposed x.csv, os.symlink raises FileExistsError -- os.path.exists returns
+    False for a dangling link, so the guard does not protect it. And if the
+    dataset did not mount, the call happily creates a dangling link and the
+    read fails later with a confusing FileNotFoundError.
+
+    Link only when the source is real and the name is free, and never raise.
+    """
+    try:
+        if _os.path.lexists(dst):
+            return
+        if not _os.path.exists(src):
+            return
+        _os.symlink(src, dst)
+    except OSError:
+        pass
+
+
 print("input shim active:", sorted(_os.listdir(_farm)))
 # --- end shim ---------------------------------------------------------------
 '''
@@ -77,6 +105,12 @@ print("input shim active:", sorted(_os.listdir(_farm)))
 def fix(path):
     nb = json.loads(Path(path).read_text())
     cells = nb["cells"]
+    for cell in cells:
+        if cell["cell_type"] != "code":
+            continue
+        text = "".join(cell["source"])
+        if "os.symlink(" in text:
+            cell["source"] = text.replace("os.symlink(", "_safe_symlink(").splitlines(keepends=True)
     if cells and MARKER in "".join(cells[0].get("source", [])):
         print(f"  already shimmed  {path}")
         return
