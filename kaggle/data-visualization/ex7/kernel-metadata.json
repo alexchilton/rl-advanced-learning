@@ -11,7 +11,9 @@
   "keywords": [
     "pandas"
   ],
-  "dataset_sources": [],
+  "dataset_sources": [
+    "alexisbcook/data-for-datavis"
+  ],
   "kernel_sources": [],
   "competition_sources": [],
   "model_sources": [],

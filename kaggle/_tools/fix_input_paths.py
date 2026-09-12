@@ -61,6 +61,13 @@ for _src in _mounted:
     _dst = _os.path.join(_farm, _os.path.basename(_src))
     if not _os.path.exists(_dst):
         _os.symlink(_src, _dst)
+    # Some courses read a bare ../input/<file>.csv, because a single attached
+    # dataset used to be mounted with its files directly under ../input. Expose
+    # each dataset's own entries at the farm root as well so both spellings work.
+    for _child in _glob.glob(_os.path.join(_src, "*")):
+        _cdst = _os.path.join(_farm, _os.path.basename(_child))
+        if not _os.path.exists(_cdst):
+            _os.symlink(_child, _cdst)
 _os.chdir(_here)
 print("input shim active:", sorted(_os.listdir(_farm)))
 # --- end shim ---------------------------------------------------------------
