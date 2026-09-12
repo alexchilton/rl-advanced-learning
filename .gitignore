@@ -30,3 +30,7 @@ models/*.pt
 models/*.pth
 *.png
 !docs/**/*.png
+
+# Local credentials - never commit
+.env
+.env.*
