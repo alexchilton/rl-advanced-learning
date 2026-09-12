@@ -41,22 +41,28 @@ PRELUDE = '''# --- input layout shim (added automatically) ---------------------
 import glob as _glob
 import os as _os
 
-_nested = _glob.glob("/kaggle/input/datasets/*/*") + _glob.glob("/kaggle/input/competitions/*")
-if _nested:
-    # Must be literally "input": ../input from _nb resolves to /kaggle/working/input.
-    _farm = "/kaggle/working/input"
-    _here = "/kaggle/working/_nb"
-    _os.makedirs(_farm, exist_ok=True)
-    _os.makedirs(_here, exist_ok=True)
-    for _src in _nested:
-        _dst = _os.path.join(_farm, _os.path.basename(_src))
-        if not _os.path.exists(_dst):
-            _os.symlink(_src, _dst)
-    # After this, ../input/<slug> resolves, and ../input is writable.
-    _os.chdir(_here)
-    print("input shim active:", sorted(_os.listdir(_farm)))
-else:
-    print("input shim not needed; ../input already has the expected layout")
+# Collect every mounted source, under either layout. The container
+# directories themselves are skipped.
+_mounted = [p for p in _glob.glob("/kaggle/input/*")
+            if _os.path.isdir(p) and _os.path.basename(p) not in ("datasets", "competitions")]
+_mounted += _glob.glob("/kaggle/input/datasets/*/*")
+_mounted += _glob.glob("/kaggle/input/competitions/*")
+
+# Always relocate, even when ../input/<slug> already resolves: /kaggle/input is
+# read-only under BOTH layouts, and some exercises symlink a competition file
+# to a bare ../input/train.csv before reading it. That write needs ../input to
+# be ours.
+# Must be literally "input": ../input from _nb resolves to /kaggle/working/input.
+_farm = "/kaggle/working/input"
+_here = "/kaggle/working/_nb"
+_os.makedirs(_farm, exist_ok=True)
+_os.makedirs(_here, exist_ok=True)
+for _src in _mounted:
+    _dst = _os.path.join(_farm, _os.path.basename(_src))
+    if not _os.path.exists(_dst):
+        _os.symlink(_src, _dst)
+_os.chdir(_here)
+print("input shim active:", sorted(_os.listdir(_farm)))
 # --- end shim ---------------------------------------------------------------
 '''
 
