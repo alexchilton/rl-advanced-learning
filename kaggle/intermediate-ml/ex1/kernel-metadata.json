@@ -11,7 +11,9 @@
   "keywords": [
     "pandas"
   ],
-  "dataset_sources": [],
+  "dataset_sources": [
+    "ericmauricio/home-data-for-ml-course"
+  ],
   "kernel_sources": [],
   "competition_sources": [
     "home-data-for-ml-course"
