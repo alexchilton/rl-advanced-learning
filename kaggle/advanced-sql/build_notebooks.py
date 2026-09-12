@@ -55,6 +55,24 @@ avg_num_trips_query = """
 q_1.check()
 '''
 
+EX2_Q2 = '''# Amend the query below
+trip_number_query = """
+                    SELECT pickup_community_area,
+                        trip_start_timestamp,
+                        trip_end_timestamp,
+                        RANK()
+                            OVER (
+                                  PARTITION BY pickup_community_area
+                                  ORDER BY trip_start_timestamp
+                                 ) AS trip_number
+                    FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`
+                    WHERE DATE(trip_start_timestamp) = '2013-10-03'
+                    """
+
+# Check your answer
+q_2.check()
+'''
+
 EX2_Q3 = '''# Fill in the blanks below
 break_time_query = """
                    SELECT taxi_id,
@@ -196,6 +214,7 @@ NOTEBOOKS = {
     }),
     "ex2": ("exercise-analytic-functions.ipynb", {
         6: ("avg_num_trips_query", EX2_Q1),
+        9: ("trip_number_query", EX2_Q2),
         12: ("break_time_query", EX2_Q3),
     }),
     "ex3": ("exercise-nested-and-repeated-data.ipynb", {
@@ -216,7 +235,12 @@ def build(name, filename, edits):
         # Two stub styles in this course: a literal ____ and an empty query
         # string. Only checking for ____ silently skipped six cells and three
         # notebooks failed on Kaggle with a BigQuery syntax error.
-        blank = "____" in text or re.search(r'"""\s*"""', text)
+        # Three stub styles in this course, and each one cost a failed run:
+        # a literal ____, an empty query string, and -- worst, because it looks
+        # finished -- a complete query under "# Amend the query below" that is
+        # missing a clause. The last is recognised by the instruction comment.
+        blank = ("____" in text or re.search(r'"""\s*"""', text)
+                 or re.search(r'#\s*Amend the query below', text))
         if cell["cell_type"] != "code" or needle not in text or not blank:
             raise SystemExit(f"{name}: cell {index} is not the stub for {needle!r}")
         cell["source"] = replacement.splitlines(keepends=True)

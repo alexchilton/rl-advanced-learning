@@ -71,6 +71,25 @@ y_pred = pd.Series(model.predict(X), index=X.index)
 q_4.check()
 '''
 
+EX2_Q1 = '''# YOUR CODE HERE: Add methods to `food_sales` to compute a moving
+# average with appropriate parameters for trend estimation.
+# Twelve months is one full seasonal cycle, so a 12-month window averages the
+# season away and leaves the trend. center=True keeps it from lagging, and
+# min_periods=6 lets the curve start before a whole window is available.
+trend = food_sales.rolling(
+    window=12,
+    center=True,
+    min_periods=6,
+).mean()
+
+# Check your answer
+q_1.check()
+
+# Make a plot
+ax = food_sales.plot(**plot_params, alpha=0.5)
+ax = trend.plot(ax=ax, linewidth=3)
+'''
+
 # --- ex2: trend -------------------------------------------------------------
 
 EX2_Q3 = '''from statsmodels.tsa.deterministic import DeterministicProcess
@@ -307,7 +326,8 @@ q_4.check()
 NOTEBOOKS = {
     "ex1": ("exercise-linear-regression-with-time-series.ipynb",
             {14: ("time = ____", EX1_Q3), 19: ("lag_1 = ____", EX1_Q4)}),
-    "ex2": ("exercise-trend.ipynb", {15: ("dp = ____", EX2_Q3)}),
+    "ex2": ("exercise-trend.ipynb",
+            {8: ("trend = food_sales", EX2_Q1), 15: ("dp = ____", EX2_Q3)}),
     "ex3": ("exercise-seasonality.ipynb",
             {10: ("fourier = ____", EX3_Q2), 24: ("X_holidays = ____", EX3_Q4)}),
     "ex4": ("exercise-time-series-as-features.ipynb",
@@ -328,7 +348,10 @@ def build(name, filename, edits):
     for index, (needle, replacement) in sorted(edits.items()):
         cell = nb["cells"][index]
         text = "".join(cell["source"])
-        if cell["cell_type"] != "code" or needle not in text or "____" not in text:
+        # Not every stub uses ____. The trend exercise ships `trend = food_sales`,
+        # a bare assignment that runs fine and answers nothing.
+        blank = "____" in text or "trend = food_sales\n" in text
+        if cell["cell_type"] != "code" or needle not in text or not blank:
             raise SystemExit(f"{name}: cell {index} is not the stub for {needle!r}")
         cell["source"] = replacement.splitlines(keepends=True)
         cell["outputs"] = []
