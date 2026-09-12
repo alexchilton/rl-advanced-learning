@@ -1,0 +1,89 @@
+"""Prepend a cell that makes `../input/<slug>/...` resolve on any Kaggle layout.
+
+Kaggle mounts attached data in two different shapes, and nothing I could
+isolate in kernel-metadata.json controls which you get -- same pinned image,
+same source lists, different result:
+
+    ../input/<slug>/...                       what every course notebook assumes
+    /kaggle/input/datasets/<owner>/<slug>/    seen on API-pushed kernels
+    /kaggle/input/competitions/<slug>/        likewise, for competition data
+
+Rewriting the paths inside the notebook is not enough, and finding that out
+cost a wasted push: the exercises fail at `from learntools.<course>.exN import
+*`, because learntools loads the data itself, at import time, through its own
+hardcoded `../input/...`. Nothing in the notebook can reach those strings.
+
+So the fix is to make the path real rather than to avoid it. `/kaggle/input` is
+read-only, but the working directory is not, so the prelude builds a directory
+of symlinks under /kaggle/working and changes into a sibling of it. After that
+`../input/<slug>` resolves for every reader -- the notebook, learntools, and
+the course's own `os.symlink` of a competition file to a bare `../input/x.csv`,
+which then works because this `../input` is writable.
+
+The cost is that the working directory moves, so files the notebook writes land
+in /kaggle/working/_nb/ instead of /kaggle/working/. They are still collected.
+
+    python kaggle/_tools/fix_input_paths.py <notebook> [<notebook> ...]
+"""
+
+import json
+import sys
+from pathlib import Path
+
+MARKER = "input layout shim"
+
+PRELUDE = '''# --- input layout shim (added automatically) --------------------------------
+# Kaggle mounts attached data either at ../input/<slug>/ or, on API-pushed
+# kernels, at /kaggle/input/datasets/<owner>/<slug>/ and
+# /kaggle/input/competitions/<slug>/. learntools reads ../input/... itself at
+# import time, so the path has to be made real rather than rewritten.
+# /kaggle/input is read-only; /kaggle/working is not.
+import glob as _glob
+import os as _os
+
+_nested = _glob.glob("/kaggle/input/datasets/*/*") + _glob.glob("/kaggle/input/competitions/*")
+if _nested:
+    # Must be literally "input": ../input from _nb resolves to /kaggle/working/input.
+    _farm = "/kaggle/working/input"
+    _here = "/kaggle/working/_nb"
+    _os.makedirs(_farm, exist_ok=True)
+    _os.makedirs(_here, exist_ok=True)
+    for _src in _nested:
+        _dst = _os.path.join(_farm, _os.path.basename(_src))
+        if not _os.path.exists(_dst):
+            _os.symlink(_src, _dst)
+    # After this, ../input/<slug> resolves, and ../input is writable.
+    _os.chdir(_here)
+    print("input shim active:", sorted(_os.listdir(_farm)))
+else:
+    print("input shim not needed; ../input already has the expected layout")
+# --- end shim ---------------------------------------------------------------
+'''
+
+
+def fix(path):
+    nb = json.loads(Path(path).read_text())
+    cells = nb["cells"]
+    if cells and MARKER in "".join(cells[0].get("source", [])):
+        print(f"  already shimmed  {path}")
+        return
+    cells.insert(0, {
+        "cell_type": "code",
+        "execution_count": None,
+        "metadata": {},
+        "outputs": [],
+        "source": PRELUDE.splitlines(keepends=True),
+    })
+    Path(path).write_text(json.dumps(nb, indent=1) + "\n")
+    print(f"  shimmed  {path}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        raise SystemExit(__doc__)
+    for p in sys.argv[1:]:
+        fix(p)
+
+
+if __name__ == "__main__":
+    main()
