@@ -96,6 +96,14 @@ papers/        notes and an index. PDFs are fetched, not vendored.
 tests/         the guarantees, asserted
 ```
 
+## Case studies
+
+Real environments, run end to end, kept whether or not they learned.
+
+| notebook | environment | what happened |
+|---|---|---|
+| [`case_smart_buildings_residual_ppo`](notebooks/case_smart_buildings_residual_ppo.ipynb) | NeurIPS 2026 Smart Buildings HVAC simulator (official starter kit) | residual PPO on top of the organisers' PID, 200k steps: no improvement on held-out days (0.03020 vs 0.03006), exploration noise never moved from its initial value; and `env.reset()` does not restore the start state |
+
 ## Credit
 
 The environments come from Sutton & Barto unless noted. The probe-environment idea
