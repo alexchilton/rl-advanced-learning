@@ -16,3 +16,6 @@ gymnasium
 #   gymnasium[box2d]   LunarLander. Compiles from source more often than not.
 #   mujoco             HalfCheetah / Hopper for the continuous-control track.
 #   minari             Standard offline RL datasets.
+#   jax flax optax gymnax sbx-rl stable-baselines3   notebooks/jax_01_lunar_lander.ipynb
+#     (LunarLander there: `pip install swig` first, then `pip install "gymnasium[box2d]"`;
+#      the plain `box2d` wheel imports `imp` and fails on Python 3.12+)

@@ -109,3 +109,9 @@ Real environments, run end to end, kept whether or not they learned.
 The environments come from Sutton & Barto unless noted. The probe-environment idea
 is Andy Jones'. The insistence on seeds and on reporting spread rather than a single
 curve comes from Henderson et al., *Deep Reinforcement Learning That Matters*.
+
+## JAX notebooks
+
+| notebook | environment | what happened |
+|---|---|---|
+| [`jax_01_lunar_lander`](notebooks/jax_01_lunar_lander.ipynb) | LunarLander-v3 (Box2D), CartPole-v1 (gymnax) | PPO from scratch in Flax + Optax: 32 gradient steps per 4,096 samples never learns (greedy 23.8, KL ~1e-3), 256 solves it (271.9) in 92 s; SBX and SB3 PPO tie at ~1,650 steps/s (255.9 / 255.7); the fused-update version runs 13x faster per env step; with the env in JAX, 8 seeds train at 242k steps/s; three silent JAX failure modes measured. Built by `notebooks/build_jax_01.py` |
