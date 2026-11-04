@@ -462,6 +462,74 @@ summary["steps_per_s"] = summary.steps / summary.wall_s
 summary.round(2)
 """)
 
+md(r"""
+### 4b. Same budget, five seeds
+
+The table above cannot rank anything: run B had twice the steps of SB3, and every
+run is one seed. Here every arm gets **1,000,000 steps** (the RL-Zoo LunarLander
+budget) and **five seeds**.
+
+Three arms:
+
+- **SB3 PPO (torch)** with the RL-Zoo settings from section 4.
+- **Ours, SB3-matched**: the from-scratch PPO with exactly those settings: 16 envs
+  x 1,024 steps per rollout, 256 minibatches of 64, 4 epochs, constant learning rate
+  3e-4. Same network shape, same initialisation, same loss. Only the implementation differs.
+- **Ours, run B settings**: 16 x 256 steps per rollout, 64 minibatches of 64. The
+  same gradient steps per sample, but four times more frequent updates.
+
+What would have to be true for a score difference: the implementations would have
+to differ in a way that matters (for example how time-limit truncation is
+bootstrapped). If they do not, the scores should overlap and only the wall clock
+should differ.
+""")
+
+code(r"""
+import contextlib, io
+from stable_baselines3 import PPO as SB3_PPO
+from stable_baselines3.common.env_util import make_vec_env
+
+SEEDS, BUDGET = [0, 1, 2, 3, 4], 1_000_000
+ARMS = {"ours, SB3-matched": dict(CFG, n_steps=1024, n_minibatch=256, lr_end=CFG["lr"], total_steps=BUDGET),
+        "ours, run B settings": dict(CFG, n_minibatch=64, lr_end=CFG["lr"], total_steps=BUDGET)}
+rows = []
+for seed in SEEDS:
+    for arm, cfg in ARMS.items():
+        t = time.perf_counter()
+        with contextlib.redirect_stdout(io.StringIO()):          # silence the per-update progress lines
+            st, lg, _ = train_ppo(dict(cfg, seed=seed))
+        wall = time.perf_counter() - t
+        rets = greedy_eval(st.params)
+        rows.append(dict(arm=arm, seed=seed, steps=int(lg.step.iloc[-1]), wall_s=wall,
+                         train_ret50=lg.ret50.iloc[-1], greedy_mean=rets.mean(), solved_share=(rets >= 200).mean()))
+        print(f"seed {seed}  {arm:22s} {wall:6.0f} s  greedy mean {rets.mean():6.1f}, {(rets >= 200).mean():.0%} at 200+")
+    venv = make_vec_env("LunarLander-v3", n_envs=16, seed=seed)
+    model = SB3_PPO("MlpPolicy", venv, **dict(ZOO_PPO, seed=seed))
+    t = time.perf_counter(); model.learn(BUDGET); wall = time.perf_counter() - t
+    pol = lambda o, m=model: int(m.predict(o, deterministic=True)[0])
+    rets = np.array([run_episode(pol, seed=5000 + i) for i in range(100)])
+    rows.append(dict(arm="SB3 PPO (torch)", seed=seed, steps=int(model.num_timesteps), wall_s=wall,
+                     train_ret50=np.mean([e["r"] for e in list(model.ep_info_buffer)[-50:]]),
+                     greedy_mean=rets.mean(), solved_share=(rets >= 200).mean()))
+    print(f"seed {seed}  {'SB3 PPO (torch)':22s} {wall:6.0f} s  greedy mean {rets.mean():6.1f}, {(rets >= 200).mean():.0%} at 200+")
+seeds_df = pd.DataFrame(rows)
+""")
+
+code(r"""
+g = seeds_df.groupby("arm", sort=False)
+table = pd.DataFrame({"steps": g.steps.first(), "wall_s mean": g.wall_s.mean(),
+                      "steps/s mean": (seeds_df.steps / seeds_df.wall_s).groupby(seeds_df.arm, sort=False).mean(),
+                      "greedy mean": g.greedy_mean.mean(), "greedy sd": g.greedy_mean.std(),
+                      "greedy min": g.greedy_mean.min(), "solved share mean": g.solved_share.mean()})
+fig, ax = plt.subplots(figsize=(7, 2.8))
+for i, (arm, d) in enumerate(g):
+    ax.scatter(np.full(len(d), i) + np.linspace(-0.1, 0.1, len(d)), d.greedy_mean, s=30)
+ax.set_xticks(range(len(g)), [a for a, _ in g]); ax.axhline(200, color="green", ls="--")
+ax.set_ylabel("greedy mean, 100 episodes"); ax.set_title(f"{BUDGET:,} steps, one dot per seed")
+plt.tight_layout(); plt.show()
+table.round(1)
+""")
+
 # ----------------------------------------------------------------------
 md(r"""
 ## 5. When the environment is JAX too
@@ -661,6 +729,14 @@ Measured on one seed per LunarLander run, on an Apple M-series laptop CPU that w
 | SBX DQN | LunarLander | 300k | 331 s | 907 | 255.8 | 90% |
 | gymnax PPO, 8 seeds in one call | CartPole | 4.0M | 16.5 s | 242k | 217 to 500 per seed | — |
 
+Section 4b, the same 1,000,000-step budget and five seeds per arm (mean over seeds; spread = standard deviation across seeds):
+
+| arm | wall per run | steps/s | greedy mean | spread | worst seed | at 200+ |
+|---|---|---|---|---|---|---|
+| ours, SB3-matched settings | 92 s | 12.8k | 242.6 | 20.2 | 210.7 | 93% |
+| ours, run B settings | 60 s | 16.6k | 254.1 | 8.0 | 246.5 | 97% |
+| SB3 PPO (torch) | 832 s | 1.25k | 249.0 | 6.5 | 241.7 | 97% |
+
 1. **The run that did not learn raised no error.** Run A plateaued near +90 with a greedy score of 23.8.
    Its health panel said why before the return did: approximate KL mostly below 1e-3 and clip fraction mostly 0, against 2e-3 to 7e-3 and 2% to 9% in run B. The policy barely moved.
    Eight times more gradient steps per sample and a constant learning rate (run B) took the same code to 271.9.
@@ -671,7 +747,10 @@ Measured on one seed per LunarLander run, on an Apple M-series laptop CPU that w
    HYPOTHESIS (not profiled): SB3 and SBX spend most of their time dispatching one minibatch at a time from Python.
 4. **The "100x" needs the environment in JAX.** With gymnax, eight seeds of CartPole trained at 242k steps per second in one call.
    That is not a like-for-like comparison: CartPole is far cheaper to simulate than Box2D, and the seeds spread widely: three ended above 400, one at 366, four between 217 and 249.
-5. **The three silent failure modes, measured:** a reused key gave 1 distinct action vector in 200 steps (200 with `split`);
+5. **At an equal budget no implementation wins on score.** Over five seeds at 1M steps, SB3 averaged 249.0, ours with SB3's exact settings 242.6 and ours with run B's settings 254.1.
+   The spreads across seeds (6.5 to 20.2) are as large as the gaps, so the scores do not rank the three. Ours with SB3's settings had one weak seed (210.7, 74% solved).
+   The speed gap holds with the budget equal: 60 to 92 s per run against 832 s for SB3, 9 to 14 times faster. SB3 ran 1,015,808 steps, because it finishes its last 16,384-step rollout.
+6. **The three silent failure modes, measured:** a reused key gave 1 distinct action vector in 200 steps (200 with `split`);
    timing without `block_until_ready` read 0.09 ms for a 26.6 ms computation; a static Python `gamma` compiled 50 times in 50 calls (1.10 s against 0.02 s).
 """)
 
