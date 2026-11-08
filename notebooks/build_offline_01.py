@@ -93,6 +93,24 @@ for q, log in logs.items():
     print(f"{q:>8} {log.coverage():>9.3f} {int(log.terminated.sum()):>15,} {behaviour[q]:>17.2f}")
 """)
 
+md(r"""
+Where each log actually goes: transitions per track cell, on a log scale. Grey cells never appear in the log.
+The expert log is a narrow line; the random log fills the bottom of the track and rarely reaches the finish.
+""")
+
+code(r"""
+from diagnostics.plots import racetrack_figure
+
+fig, axs = plt.subplots(1, 4, figsize=(18, 5))
+for ax, (q, log) in zip(axs, logs.items()):
+    per_cell = np.full((env.rows, env.cols), np.nan)
+    for s in log.states:
+        cell, _, _ = env.decode(int(s))
+        per_cell[cell] = (0 if np.isnan(per_cell[cell]) else per_cell[cell]) + 1
+    racetrack_figure(env, ax, cell_values=np.log10(per_cell), cmap="magma", title=f"{q}: log10 transitions per cell")
+plt.show()
+""")
+
 # ----------------------------------------------------------------------
 md(r"""
 ## 1. Four backups, one line apart

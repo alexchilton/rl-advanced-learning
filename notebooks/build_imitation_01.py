@@ -42,6 +42,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from algos import bc, dagger, gail, max_ent_irl
+from diagnostics.plots import racetrack_figure
 from envs import solvers
 from envs.racetrack import ACTION_NAMES, Racetrack
 
@@ -73,8 +74,7 @@ The **data** every method gets is a set of expert demonstrations: (state, action
 """)
 
 code(r"""
-print(env.render())
-print(f"\n{env.n_states:,} states, {env.n_actions} actions, exact optimal return {optimal:.3f}\n")
+print(f"{env.n_states:,} states, {env.n_actions} actions, exact optimal return {optimal:.3f}\n")
 
 states, actions = bc.collect_demonstrations(env, expert, n_labels=12, seed=1)
 print(f"{'state':>6} {'row':>4} {'col':>4} {'v_up':>5} {'v_right':>8} {'action':>7}  name")
@@ -82,8 +82,29 @@ for s, a in zip(states, actions):
     (row, col), vu, vr = env.decode(int(s))
     print(f"{s:>6} {row:>4} {col:>4} {vu:>5} {vr:>8} {a:>7}  {ACTION_NAMES[a]}")
 
-print("\nthe cells those 12 labels visit (episodes are about 7 steps, so this is more than one); digits are the speed:\n")
-print(env.render_trajectory(states))
+def one_episode(policy_fn, seed):
+    env.reset(seed=seed); visited = [env.state]
+    for _ in range(40):
+        _, _, terminated, truncated, _ = env.step(policy_fn(env.state)); visited.append(env.state)
+        if terminated or truncated: break
+    return visited
+
+clone_states, clone_actions = bc.collect_demonstrations(env, expert, n_labels=10, seed=1)
+clone = bc.fit(env, clone_states, clone_actions)
+fig, axs = plt.subplots(1, 3, figsize=(16, 5.2))
+racetrack_figure(env, axs[0], states=one_episode(lambda s: int(expert[s]), seed=11), title="expert, start seed 11")
+racetrack_figure(env, axs[1], states=one_episode(clone, seed=3), title="BC clone (10 labels), seed 3: finishes")
+racetrack_figure(env, axs[2], states=one_episode(clone, seed=11), title="same clone, seed 11: stuck for 40 steps")
+plt.show()
+
+finished = [one_episode(clone, seed)[-1] == env.finished_state for seed in range(20)]
+print(f"10-label clone finishes within 40 steps on {sum(finished)} of 20 start seeds")
+""")
+
+md(r"""
+Blue cells are the start line, green the finish, brown is off-track. Dot colour is speed.
+The clone copies the expert well on states it has seen. On seed 11 it crashes into the wall one cell short of the finish and stops at speed 0. No demonstration was ever stopped there, its nearest-neighbour guess is wrong, and it stays stuck.
+That is covariate shift in one picture; section 2 measures it.
 """)
 
 # ----------------------------------------------------------------------
@@ -236,9 +257,8 @@ plt.xscale("log"); plt.xlabel("demonstrations"); plt.ylabel("exact return"); plt
 
 code(r"""
 reward, _ = max_ent_irl.train(env, max_ent_irl.collect_demonstrations(env, noisy_expert, 100, seed=0), features)
-grid = env.cell_values(reward)
-plt.figure(figsize=(5, 6)); plt.imshow(grid, cmap="viridis"); plt.colorbar(label="recovered reward")
-plt.title("recovered reward per track cell (100 demos)"); plt.axis("off"); plt.show()
+racetrack_figure(env, states=None, cell_values=env.cell_values(reward), title="recovered reward per track cell (100 demos)")
+plt.show()
 """)
 
 md(r"""

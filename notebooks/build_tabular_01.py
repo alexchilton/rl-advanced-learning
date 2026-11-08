@@ -18,8 +18,8 @@ def code(text):
 md(r"""
 # Tabular Q-learning, scored against the exact answer
 
-**Code:** [`algos/q_learning.py`](../algos/q_learning.py) · [`experiments/sparse_vs_dense.py`](../experiments/sparse_vs_dense.py) ·
-**Papers:** Watkins 1989 ([PDF](../papers/tabular/watkins-1989-qlearning.pdf)), Sutton 1988 ([PDF](../papers/tabular/sutton-1988-td.pdf)), Ng et al. 1999 ([PDF](../papers/tabular/ng-1999-shaping.pdf)) ·
+**Code:** [`algos/q_learning.py`](../algos/q_learning.py) · [`algos/sarsa.py`](../algos/sarsa.py) · [`experiments/sparse_vs_dense.py`](../experiments/sparse_vs_dense.py) · [`experiments/cliff_sarsa_vs_qlearning.py`](../experiments/cliff_sarsa_vs_qlearning.py) ·
+**Papers:** Watkins 1989 ([PDF](../papers/tabular/watkins-1989-qlearning.pdf)), Sutton 1988 ([PDF](../papers/tabular/sutton-1988-td.pdf)), Rummery & Niranjan 1994 ([PDF](../papers/tabular/rummery-niranjan-1994-sarsa.pdf)), Ng et al. 1999 ([PDF](../papers/tabular/ng-1999-shaping.pdf)) ·
 **Notes:** [`papers/tabular/notes.md`](../papers/tabular/notes.md)
 
 What you will see:
@@ -29,6 +29,7 @@ What you will see:
 3. A one-line bug (`np.argmax` instead of random tie-breaking) that turns a learnable task into a score of 0.
 4. The learned values against the true values, cell by cell.
 5. Four reward functions on the same grid: dense learns fastest, potential-based shaping is *slower* than sparse on large grids, and a reward that looks almost correct is never solved.
+6. SARSA against Q-learning on the cliff: one term of the target apart, two different policies.
 
 Runs on CPU in about two minutes. Run from the repo root (`jupyter lab` at the top level) or with the repo installed (`pip install -e .`).
 """)
@@ -39,6 +40,7 @@ import matplotlib.pyplot as plt
 
 from algos import q_learning
 from algos.q_learning import steps_to_threshold, train
+from diagnostics.plots import grid_figure
 from diagnostics.render import compare_grids, policy_overlay
 from envs.gridworld import GridWorld
 
@@ -69,7 +71,10 @@ So the "true" Q function is computed from the same object the agent interacts wi
 
 code(r"""
 env = GridWorld(size=8, reward_mode="dense", gamma=GAMMA)
-print(env.render())
+fig, axs = plt.subplots(1, 2, figsize=(10, 4.2))
+grid_figure(env, axs[0], title="GridWorld 8x8: start S, goal G")
+grid_figure(env, axs[1], values=env.true_v(GAMMA), policy=env.optimal_policy(GAMMA), title="exact V* and optimal policy (no learning)")
+plt.show()
 print(f"\n{env.n_states} states, {env.n_actions} actions, start={env.start}, goal={env.goal}\n")
 
 start = env.index(env.start)
@@ -193,13 +198,10 @@ A systematic error (same sign everywhere, growing towards the goal) is a bug. A 
 code(r"""
 Q, _ = train(env, seed=0)
 learned, truth = Q.max(axis=1), env.true_v(GAMMA)
-fig, axs = plt.subplots(1, 3, figsize=(11, 3.4))
-for ax, grid, title, cmap in ((axs[0], learned, "learned max Q", "viridis"), (axs[1], truth, "true V*", "viridis"),
-                              (axs[2], learned - truth, "learned − true", "coolwarm")):
-    grid = grid.reshape(env.size, env.size)
-    lim = np.abs(grid).max() if cmap == "coolwarm" else None
-    im = ax.imshow(grid, cmap=cmap, vmin=-lim if lim else None, vmax=lim)
-    ax.set_title(title); ax.axis("off"); fig.colorbar(im, ax=ax, fraction=0.046)
+fig, axs = plt.subplots(1, 3, figsize=(15, 4.4))
+grid_figure(env, axs[0], values=learned, policy=Q, title="learned max Q, greedy arrows")
+grid_figure(env, axs[1], values=truth, policy=env.optimal_policy(GAMMA), title="true V*, optimal arrows")
+grid_figure(env, axs[2], values=learned - truth, title="learned − true", cmap="Blues_r")
 plt.suptitle("GridWorld 8x8, dense reward, after 60,000 steps"); plt.show()
 print(compare_grids(env, learned, truth, gamma_label=f"(gamma={GAMMA})"))
 print()
@@ -283,14 +285,70 @@ The full derivation is in `shaping_margin` in [`experiments/sparse_vs_dense.py`]
 
 code(r"""
 hacked = GridWorld(size=8, reward_mode="misspecified", gamma=GAMMA)
-print("optimal policy under the misspecified reward:\n")
-print(hacked.render_policy(hacked.optimal_policy(GAMMA)))
-print("\nLook at the cells next to the goal: the arrows point away from it.")
+shaped = GridWorld(size=8, reward_mode="shaped", gamma=GAMMA)
+fig, axs = plt.subplots(1, 2, figsize=(10, 4.2))
+grid_figure(shaped, axs[0], policy=shaped.optimal_policy(GAMMA), title="shaped: optimal policy enters G")
+grid_figure(hacked, axs[1], policy=hacked.optimal_policy(GAMMA), title="misspecified: arrows next to G point away")
+plt.show()
 """)
 
 # ----------------------------------------------------------------------
 md(r"""
-## 6. What breaks, and how you would know
+## 6. SARSA against Q-learning on the cliff
+
+SARSA ([`algos/sarsa.py:75-77`](../algos/sarsa.py)) changes one term of the target: $Q(s', a')$ for the action it **will** take, instead of $\max_{a'} Q(s', a')$.
+So SARSA learns the value of the epsilon-greedy policy it follows. Q-learning learns the value of the greedy policy it does not follow.
+
+**CliffWalking** (Sutton & Barto, Example 6.6): a 4×12 grid. Start `S` bottom left, goal `G` bottom right, a cliff `C` between them.
+Each step costs −1. Stepping into the cliff costs −100 and returns the agent to the start.
+
+Two exact numbers per method:
+- **greedy**: the return of $\arg\max Q$, the policy the method claims is best
+- **as followed**: the return of the ε-greedy policy it actually runs while training
+
+Same α = 0.2, ε = 0.1, 30,000 steps, 5 seeds ([`experiments/cliff_sarsa_vs_qlearning.py`](../experiments/cliff_sarsa_vs_qlearning.py)).
+""")
+
+code(r"""
+from algos import sarsa
+from envs import solvers
+from envs.cliff import CliffWalking
+
+cliff = CliffWalking()
+CG = 0.99
+
+res = {}
+for name, method in (("Q-learning", q_learning), ("SARSA", sarsa)):
+    rows = []
+    for seed in range(5):
+        Q, _ = method.train(cliff, gamma=CG, alpha=0.2, epsilon=0.1, n_steps=30_000, eval_every=30_000, seed=seed)
+        rows.append((Q, cliff.policy_return(Q.argmax(1), CG),
+                     cliff.policy_return(solvers.epsilon_greedy_policy(Q, 0.1), CG), len(sarsa.greedy_path(cliff, Q)) - 1))
+    res[name] = rows
+
+print(f"exact optimum {cliff.optimal_return(CG):.3f}\n")
+print(f"{'method':>11} {'greedy (median)':>16} {'as followed (median)':>21} {'path steps per seed':>22}")
+for name, rows in res.items():
+    print(f"{name:>11} {np.median([r[1] for r in rows]):>16.3f} {np.median([r[2] for r in rows]):>21.3f} "
+          f"{str([r[3] for r in rows]):>22}")
+
+fig, axs = plt.subplots(1, 2, figsize=(13, 2.8))
+for ax, (name, rows) in zip(axs, res.items()):
+    path = sarsa.greedy_path(cliff, rows[0][0])
+    grid_figure(cliff, ax, policy=rows[0][0], path=path, title=f"{name}: greedy path, {len(path) - 1} steps (red = cliff)")
+plt.show()
+""")
+
+md(r"""
+Q-learning wins the **greedy** column and loses the **as followed** column. SARSA does the opposite. Neither is wrong: they value different policies.
+
+One thing the table hides: SARSA needs a smaller step size. Its target contains a random action, so at α = 0.5 (Q-learning's default) and 30,000 steps its greedy policy loops forever on 2 of 5 seeds.
+That measurement is recorded at the top of [`algos/sarsa.py`](../algos/sarsa.py).
+""")
+
+# ----------------------------------------------------------------------
+md(r"""
+## 7. What breaks, and how you would know
 
 From the bottom of [`algos/q_learning.py`](../algos/q_learning.py):
 
