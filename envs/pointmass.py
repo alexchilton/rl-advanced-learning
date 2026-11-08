@@ -15,14 +15,14 @@ A network fed this raw has to learn first-layer weights ten times smaller on two
 of its four inputs before it can learn anything else, and with one learning rate
 for all of them it mostly does not. Wrap the observation in a running mean/std
 normaliser and the same agent with the same hyperparameters learns. That one-line
-difference is the demo in `experiments/obs_normalisation.py`, and it is the most
+difference is the demo in `experiments/obs_normalisation.py` (planned, not built yet), and it is the most
 common reason a correct implementation does nothing at all.
 
 **The action bound matters.** Actions are clipped to `[-1, 1]`. A Gaussian policy
 that ignores the bound puts most of its probability mass outside it, so the
 gradient it computes is for actions the environment never executed. A tanh-squashed
 policy fixes that, but only with the log-probability correction -- and forgetting
-that correction is `broken/sac_missing_tanh_correction.py`.
+that correction will be `broken/sac_missing_tanh_correction.py` (planned, not built yet).
 
 There is no exact solver here: the state space is continuous. Ground truth comes
 instead from a hand-written proportional-derivative controller, `expert_action`,
@@ -80,7 +80,7 @@ class PointMass:
         start_radius: the mass starts at a uniformly random angle and a radius
             drawn uniformly from [0.4 * start_radius, start_radius].
         reward_scale: multiplies every reward. Set it to 1000 to reproduce the
-            gradient explosion in `experiments/reward_normalisation.py`. The
+            gradient explosion in `experiments/reward_normalisation.py` (planned, not built yet). The
             optimal policy is unchanged; the learning dynamics are not.
         seed: seeds the start state sampling.
     """

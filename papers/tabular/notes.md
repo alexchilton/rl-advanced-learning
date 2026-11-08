@@ -64,8 +64,27 @@ Not built in this repo yet. There is no Dyna file; the plan lists it in `docs/rl
 
 PDF: [`rummery-niranjan-1994-sarsa.pdf`](./rummery-niranjan-1994-sarsa.pdf)
 
-Not built in this repo yet.
-`algos/q_learning.py:12` refers to `algos/sarsa.py`, which does not exist.
+### The idea in one paragraph
+
+SARSA bootstraps from the action the agent will actually take next, not from the best one.
+That makes it on-policy: it learns the value of the epsilon-greedy policy it follows, exploration included.
+The name is the tuple each update uses: (s, a, r, s', a').
+The report called it "modified connectionist Q-learning"; Sutton coined "SARSA" later.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| $a' \sim \epsilon\text{-greedy}(Q(s', \cdot))$, chosen before the update | the next action, which the target uses | `algos/sarsa.py:75` |
+| $Q(s,a) \leftarrow Q(s,a) + \alpha(r + \gamma Q(s',a') - Q(s,a))$ | the update | `algos/sarsa.py:76-77` |
+| $\pi_\epsilon(a \mid s)$ | the policy SARSA's Q is the value of | `envs/solvers.py:199` (`epsilon_greedy_policy`) |
+
+### What it got wrong / what came after
+
+Measured (`python experiments/cliff_sarsa_vs_qlearning.py`, 4×12 cliff, α = 0.2, ε = 0.1, 30,000 steps, 5 of 5 seeds): Q-learning's greedy path is the 13-step edge (exact return −12.248), SARSA's the 17-step safe path (−15.706).
+The policies they actually follow while exploring score the other way round: Q-learning −46.6, SARSA −20.4 (medians).
+SARSA's target contains the random next action, so it needs a smaller α: at α = 0.5 and 30,000 steps its greedy policy loops forever on 2 of 5 seeds.
+After: Expected SARSA replaces $Q(s',a')$ with its expectation under the policy, removing that variance.
 
 ## Policy Invariance Under Reward Transformations: Theory and Application to Reward Shaping (Andrew Y. Ng, Daishi Harada, Stuart Russell, 1999)
 

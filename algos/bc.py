@@ -155,10 +155,13 @@ def main():
             f"{value - optimal:>8.2f}"
         )
 
-    print("\nThe gap does not close. Past a few hundred labels the coverage keeps")
-    print("rising and the return does not, because every extra label lands on the")
-    print("expert's own trajectory -- which was never the part that was missing.")
-    print("\nSee experiments/bc_vs_dagger.py for what fixes it.")
+    print("\nRead the covariate shift column against the return. Up to 80 labels the")
+    print("clone drifts off the expert's states and the return is poor, and more labels")
+    print("do not reliably help: 40 labels score worse than 20. Once the shift falls")
+    print("near zero the clone stays on the expert's trajectory and nearly matches it.")
+    print("\nThis is ONE seed, and this seed happens to recover. Over five seeds the")
+    print("median sits at -12.93 at both 160 and 320 labels, while DAgger reaches the")
+    print("expert at 80. See experiments/bc_vs_dagger.py.")
 
 
 if __name__ == "__main__":

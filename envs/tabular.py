@@ -15,7 +15,7 @@ episode ended because the MDP says so, and the return really is over -- do not
 bootstrap. `truncated` means we ran out of patience at `max_steps`, the MDP would
 have continued, and you SHOULD bootstrap from the final observation. Collapsing
 the two into one `done` flag is one of the most common and least visible bugs in
-deep RL; `broken/truncation_as_termination.py` measures what it costs.
+deep RL; `broken/truncation_as_termination.py` (planned, not built yet) will measure what it costs.
 """
 
 from __future__ import annotations

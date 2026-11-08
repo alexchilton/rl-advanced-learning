@@ -22,7 +22,7 @@ Three jobs, in increasing order of how rare they are elsewhere.
 2. **Show how to see it going wrong.** Probe environments, a health panel, seed
    discipline, and a `broken/` directory of working algorithms with one realistic
    bug each.
-3. **Be a cookbook.** `cookbook/symptoms.md` is the thing you open when a run is not
+3. **Be a cookbook** (planned, not built yet). `cookbook/symptoms.md` will be the thing you open when a run is not
    learning at 11pm and you want a lookup table, not a lecture.
 
 ## Ground truth
@@ -83,7 +83,7 @@ Run them from the repo root, or after `pip install -e .`.
 | notebook | what it covers | runtime |
 | --- | --- | --- |
 | [`00_ground_truth`](notebooks/00_ground_truth.ipynb) | exact solutions, exact policy scoring, the terminal-mask bug, reward hacking vs the discount | seconds |
-| [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes | ~1 min |
+| [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes; SARSA vs Q-learning on the cliff (17-step safe path vs 13-step edge) | ~1 min |
 | [`imitation_01_bc_dagger_irl_gail`](notebooks/imitation_01_bc_dagger_irl_gail.ipynb) | BC, DAgger, MaxEnt IRL and GAIL on one 7,126-state racetrack, with what each is allowed to see | ~3 min |
 | [`offline_01_q_cql_bcq_iql`](notebooks/offline_01_q_cql_bcq_iql.ipynb) | naive offline Q (believes −1.84, gets −98.73), CQL, BCQ, IQL, four dataset qualities, offline-to-online | ~2 min |
 | [`kaggle_01_behaviour_cloning_fails`](notebooks/kaggle_01_behaviour_cloning_fails.ipynb) | self-contained BC vs DAgger, no repo imports | ~2 min |

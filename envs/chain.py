@@ -16,7 +16,7 @@ earn their keep.
 plus linear function approximation: the deadly triad. All rewards are zero, so the
 true value function is zero and is exactly representable by the features. Off-policy
 TD still diverges to infinity. Remove any one of the three and it does not.
-`experiments/deadly_triad.py` runs all four combinations.
+`experiments/deadly_triad.py` (planned, not built yet) will run all four combinations.
 """
 
 from __future__ import annotations
