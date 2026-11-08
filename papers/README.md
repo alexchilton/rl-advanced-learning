@@ -1,8 +1,8 @@
 # Papers
 
 Reading list for `rl_advanced_learning`, grouped by tier as in `docs/rl-curriculum-plan.md`.
-PDFs are fetched by `fetch.py` into the matching subdirectory and are gitignored (`papers/**/*.pdf`).
-This table is the tracked index.
+The PDFs are committed in the matching subdirectory, so every link below opens on GitHub.
+`fetch.py` re-downloads them from their public sources if you want fresh copies.
 
 Each tier subdirectory also has a `notes.md` stub for mapping equations to line numbers in this repo, per the plan.
 

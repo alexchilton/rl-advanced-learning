@@ -18,10 +18,6 @@ venv/
 # macOS
 .DS_Store
 
-# Papers are fetched, not vendored. `papers/fetch.py` downloads them from arXiv
-# and other public sources; the notes and the index are tracked, the PDFs are not.
-papers/**/*.pdf
-
 # Run artefacts
 data/logs/
 data/runs/

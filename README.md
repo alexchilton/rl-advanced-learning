@@ -92,7 +92,7 @@ broken/        working algorithms with one realistic bug each, plus FIX.md
 diagnostics/   probe environments, health panel, seed sweeps
 experiments/   comparison runs that emit a table and a plot
 cookbook/      symptom tables, defaults, checklists
-papers/        notes and an index. PDFs are fetched, not vendored.
+papers/        the PDFs, notes and an index
 tests/         the guarantees, asserted
 ```
 
