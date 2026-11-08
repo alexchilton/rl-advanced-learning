@@ -8,8 +8,8 @@ the other case: the run that does not learn, produces no error, and looks fine.
 Every algorithm here ships with what breaks it, how you would notice, and how to
 tell a bug from a hard problem.
 
-**Status: early.** The environments and the exact solvers are in. Algorithms follow,
-tier by tier. See [`docs/rl-curriculum-plan.md`](docs/rl-curriculum-plan.md) for the
+**Status:** tabular, deep value, policy gradient, imitation and offline tiers are built, each with a
+notebook. Exploration, preference/LLM and normalisation follow. See [`docs/rl-curriculum-plan.md`](docs/rl-curriculum-plan.md) for the
 full plan.
 
 ## The idea
@@ -86,6 +86,8 @@ Run them from the repo root, or after `pip install -e .`.
 | [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes; SARSA vs Q-learning on the cliff (17-step safe path vs 13-step edge) | ~1 min |
 | [`imitation_01_bc_dagger_irl_gail`](notebooks/imitation_01_bc_dagger_irl_gail.ipynb) | BC, DAgger, MaxEnt IRL and GAIL on one 7,126-state racetrack, with what each is allowed to see | ~3 min |
 | [`offline_01_q_cql_bcq_iql`](notebooks/offline_01_q_cql_bcq_iql.ipynb) | naive offline Q (believes −1.84, gets −98.73), CQL, BCQ, IQL, four dataset qualities, offline-to-online | ~2 min |
+| [`deep_value_01_dqn_family`](notebooks/deep_value_01_dqn_family.ipynb) | probe environments catch a terminal-mask bug DQN hides on CartPole; replay and target network removed one at a time (no target: Q diverges to ~3e10); maximisation bias; DQN, Double, Dueling, PER, 3-step over 5 seeds | ~2 min live + stored sweep |
+| [`policy_gradient_01_reinforce_to_sac`](notebooks/policy_gradient_01_reinforce_to_sac.ipynb) | gradient variance under four weightings (baseline: 12x lower); REINFORCE, A2C, PPO; GAE λ; PPO epochs vs clip; DDPG, TD3 ablation, SAC temperature; a pendulum swing-up | ~4 min live + stored sweep |
 | [`kaggle_01_behaviour_cloning_fails`](notebooks/kaggle_01_behaviour_cloning_fails.ipynb) | self-contained BC vs DAgger, no repo imports | ~2 min |
 | [`jax_01_lunar_lander`](notebooks/jax_01_lunar_lander.ipynb) | PPO from scratch in Flax/Optax, SB3 vs SBX, gymnax | long; see the notebook |
 | [`case_smart_buildings_residual_ppo`](notebooks/case_smart_buildings_residual_ppo.ipynb) | a run that does not learn, kept | see the notebook |
@@ -105,8 +107,8 @@ pytest                             # the ground-truth guarantees, checked
 ```
 envs/          tiny environments, pure numpy, exact ground truth
 algos/         one algorithm per file
-diagnostics/   text renderers: value heatmaps, policy arrows, learned-vs-true grids
-experiments/   comparison runs that print a table
+diagnostics/   probe environments, terminal and matplotlib renderers of the environments
+experiments/   comparison runs and resumable seed sweeps; results/ holds their JSON
 notebooks/     runnable walkthroughs, committed with their outputs
 papers/        the PDFs, notes mapping equations to file:line, and an index
 tests/         the guarantees, asserted
@@ -114,7 +116,7 @@ tests/         the guarantees, asserted
 
 Planned and not built yet: `broken/` (working algorithms with one realistic bug each),
 `cookbook/` (symptom tables, defaults, checklists), and the probe environments, health
-panel and seed sweeps in `diagnostics/`.
+panel in `diagnostics/`.
 
 ## Case studies
 
