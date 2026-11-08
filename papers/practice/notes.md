@@ -1,53 +1,30 @@
 # Notes — Practice (the debugging half)
 
 One section per paper.
-Fill in as each algorithm gets built, per the plan's build order — not all at once at the end.
+No algorithm in this tier has its own code in this repo yet; each section says what exists, if anything.
 
 ## Deep Reinforcement Learning that Matters (Peter Henderson, Riashat Islam, Philip Bachman, Joelle Pineau, Doina Precup, David Meger, 2017)
 
 PDF: [`henderson-2017-deep-rl-matters.pdf`](./henderson-2017-deep-rl-matters.pdf)
 
-### The idea in one paragraph
+This is a practice paper, so there are no equations to map. Where its rules show up in this repo:
 
+| Rule from the paper | Where it is applied |
+| --- | --- |
+| report several seeds, never one curve | `experiments/bc_vs_dagger.py:27` (5 seeds), `experiments/sparse_vs_dense.py:35`, `experiments/offline_dataset_quality.py:35`, `algos/offline_to_online.py:41` (3 seeds each) |
+| report the spread, not only the mean | the median `[min, max]` columns printed by `experiments/bc_vs_dagger.py` and `algos/gail.py` |
+| evaluation noise hides real differences | removed entirely for finite environments: every score is an exact `policy_return` (`envs/solvers.py:164`) |
 
-### Equations to code
-
-| Equation | What it is | file:line in this repo |
-| --- | --- | --- |
-| | | |
-
-### What it got wrong / what came after
-
+What the repo adds: exact evaluation removes measurement noise but not policy volatility. In `algos/offline_to_online.py` naive fine-tuning starts at −6.54; its worst point is −38.30 on one seed and −9.30 and −8.93 on the other two.
 
 ## Implementation Matters in Deep Policy Gradients: A Case Study on PPO and TRPO (Logan Engstrom et al., 2020)
 
 PDF: [`engstrom-2020-implementation-matters.pdf`](./engstrom-2020-implementation-matters.pdf)
 
-### The idea in one paragraph
-
-
-### Equations to code
-
-| Equation | What it is | file:line in this repo |
-| --- | --- | --- |
-| | | |
-
-### What it got wrong / what came after
-
+No standalone code. The JAX notebook is a small instance of the paper's point: the same PPO loss with 32 or 256 gradient steps per batch gives greedy 23.8 or 271.9 on LunarLander (`notebooks/jax_01_lunar_lander.ipynb`).
 
 ## What Matters in On-Policy Reinforcement Learning? A Large-Scale Empirical Study (Marcin Andrychowicz et al., 2020)
 
 PDF: [`andrychowicz-2020-what-matters.pdf`](./andrychowicz-2020-what-matters.pdf)
 
-### The idea in one paragraph
-
-
-### Equations to code
-
-| Equation | What it is | file:line in this repo |
-| --- | --- | --- |
-| | | |
-
-### What it got wrong / what came after
-
-
+No standalone code. The JAX notebook compares PPO settings (run A against run B, SB3's settings against ours) at an equal 1M-step budget over 5 seeds; see its summary table.

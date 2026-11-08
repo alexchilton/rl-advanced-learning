@@ -75,6 +75,23 @@ misspecified  a one-sided progress bonus. The optimal policy is to oscillate
 The difference between `shaped` and `misspecified` is one `max(0, ...)`. That is the
 whole lesson, and `tests/test_gridworld.py` asserts both halves of it.
 
+## Notebooks
+
+Each one runs top to bottom on a laptop CPU and is committed with its outputs, so it reads on GitHub without running anything.
+Run them from the repo root, or after `pip install -e .`.
+
+| notebook | what it covers | runtime |
+| --- | --- | --- |
+| [`00_ground_truth`](notebooks/00_ground_truth.ipynb) | exact solutions, exact policy scoring, the terminal-mask bug, reward hacking vs the discount | seconds |
+| [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes | ~1 min |
+| [`imitation_01_bc_dagger_irl_gail`](notebooks/imitation_01_bc_dagger_irl_gail.ipynb) | BC, DAgger, MaxEnt IRL and GAIL on one 7,126-state racetrack, with what each is allowed to see | ~3 min |
+| [`offline_01_q_cql_bcq_iql`](notebooks/offline_01_q_cql_bcq_iql.ipynb) | naive offline Q (believes −1.84, gets −98.73), CQL, BCQ, IQL, four dataset qualities, offline-to-online | ~2 min |
+| [`kaggle_01_behaviour_cloning_fails`](notebooks/kaggle_01_behaviour_cloning_fails.ipynb) | self-contained BC vs DAgger, no repo imports | ~2 min |
+| [`jax_01_lunar_lander`](notebooks/jax_01_lunar_lander.ipynb) | PPO from scratch in Flax/Optax, SB3 vs SBX, gymnax | long; see the notebook |
+| [`case_smart_buildings_residual_ppo`](notebooks/case_smart_buildings_residual_ppo.ipynb) | a run that does not learn, kept | see the notebook |
+
+The paper notes in [`papers/`](papers/README.md) map each equation to the line that implements it.
+
 ## Try it
 
 ```bash
@@ -88,13 +105,16 @@ pytest                             # the ground-truth guarantees, checked
 ```
 envs/          tiny environments, pure numpy, exact ground truth
 algos/         one algorithm per file
-broken/        working algorithms with one realistic bug each, plus FIX.md
-diagnostics/   probe environments, health panel, seed sweeps
-experiments/   comparison runs that emit a table and a plot
-cookbook/      symptom tables, defaults, checklists
-papers/        the PDFs, notes and an index
+diagnostics/   text renderers: value heatmaps, policy arrows, learned-vs-true grids
+experiments/   comparison runs that print a table
+notebooks/     runnable walkthroughs, committed with their outputs
+papers/        the PDFs, notes mapping equations to file:line, and an index
 tests/         the guarantees, asserted
 ```
+
+Planned and not built yet: `broken/` (working algorithms with one realistic bug each),
+`cookbook/` (symptom tables, defaults, checklists), and the probe environments, health
+panel and seed sweeps in `diagnostics/`.
 
 ## Case studies
 
