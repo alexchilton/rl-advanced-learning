@@ -115,4 +115,32 @@ The converse half of the paper is the `misspecified` mode: the one-sided bonus i
 
 PDF: [`vanhasselt-2010-doubleq.pdf`](./vanhasselt-2010-doubleq.pdf)
 
-Not built in this repo yet.
+### The idea in one paragraph
+
+The max over noisy, unbiased estimates is biased upwards: $\mathbb{E}[\max_a \hat Q(a)] \ge \max_a \mathbb{E}[\hat Q(a)]$.
+Keep two tables. Each step a coin picks one to update; that table chooses the best next action and the other one scores it.
+Their errors are independent, so the lucky error that made an action look best is not the one used to value it.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| $a^* = \arg\max_{a'} Q_1(s', a')$ | the updated table selects | `algos/double_q.py:67` |
+| $Q_1(s,a) \leftarrow Q_1(s,a) + \alpha(r + \gamma Q_2(s', a^*) - Q_1(s,a))$ | the other table evaluates | `algos/double_q.py:68-69` |
+| act ε-greedily on $Q_1 + Q_2$ | behaviour | `algos/double_q.py:55` |
+
+The test MDP is Sutton & Barto's Example 6.7, in `envs/maximization_bias.py`: going left is worth −0.1, right 0.
+
+### What it got wrong / what came after
+
+Measured over 2,000 runs (`python algos/double_q.py`), share of episodes going left from A, where ε-greedy alone gives 5%:
+
+| episodes | Q-learning | Double Q |
+| --- | --- | --- |
+| 1–10 | 69.8% | 50.3% |
+| 11–50 | 89.7% | 26.0% |
+| 51–100 | 61.9% | 10.2% |
+| 201–300 | 13.5% | 6.8% |
+
+Each table sees half the data, so Double Q learns each value more slowly.
+After: Double DQN (`papers/deep-value/notes.md`) uses DQN's online and target networks as the two estimators.
