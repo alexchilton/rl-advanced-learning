@@ -147,12 +147,78 @@ The combination beat every single extension on Atari, and the ablation ranked PE
 | Equation | What it is | file:line in this repo |
 | --- | --- | --- |
 | $y = \sum_{k=0}^{n-1} \gamma^k r_{t+k} + \gamma^n \max_{a'} Q_{\bar\theta}(s_{t+n}, a')$ | n-step target, n = 3 | `algos/n_step_dqn.py:58-64` (stored), `algos/n_step_dqn.py:85-87` (bootstrap) |
-| Double, PER, Dueling | the other three built components | `algos/double_dqn.py`, `per_dqn.py`, `dueling_dqn.py` |
+| Double, PER, Dueling | three more components | `algos/double_dqn.py`, `per_dqn.py`, `dueling_dqn.py` |
+| C51, Noisy | the last two, sections below | `algos/c51_dqn.py`, `algos/noisy_dqn.py` |
 
-Not built: distributional heads, noisy networks, and a file combining all six.
+All six are built as separate files; there is no file combining them.
 
 ### What it got wrong / what came after
 
 On CartPole the 3-step target is the clear winner: mean over curve 407.3 against DQN's 231.3, and every seed ends at 98.3 or above.
 That matches Rainbow's ranking of n-step among the most important components, on a much smaller problem.
 Reward reaches back three states per update instead of one.
+
+## A Distributional Perspective on Reinforcement Learning (Marc G. Bellemare, Will Dabney, Rémi Munos, 2017)
+
+PDF: [`bellemare-2017-distributional.pdf`](./bellemare-2017-distributional.pdf)
+
+### The idea in one paragraph
+
+Learn the distribution of the return, not only its mean.
+C51 represents it as probabilities on N = 51 fixed atoms between V_MIN and V_MAX.
+The Bellman update shifts and shrinks the target distribution, $r + \gamma z_j$, and each shifted atom's probability is split between its two nearest grid points.
+The loss is the cross-entropy between that projected target and the prediction; Q is the mean, so acting is unchanged.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| $Q(s,a) = \sum_i p_i(s,a)\, z_i$ | the mean, used for acting | `algos/c51_dqn.py:55-56` |
+| $\hat T z_j = \mathrm{clip}(r + \gamma (1-d) z_j, V_{MIN}, V_{MAX})$ | shifted target atoms | `algos/c51_dqn.py:63` |
+| split by distance to $\lfloor b \rfloor$, $\lceil b \rceil$ | the projection Φ | `algos/c51_dqn.py:59-73` |
+| $a^* = \arg\max_a \sum_i p_i(s',a) z_i$ on the target net | next action | `algos/c51_dqn.py:111` |
+| $-\sum_i m_i \log p_i(s,a)$ | cross-entropy loss | `algos/c51_dqn.py:114` |
+
+The paper uses V_MAX = −V_MIN = 10 on Atari with clipped rewards. CartPole's discounted returns lie in [0, 100], so the support here is [0, 100].
+
+### What it got wrong / what came after
+
+On a coin flip with an exactly known return distribution (+1 with probability 1/4, −1 otherwise; `diagnostics/probe_envs.py`, `CoinFlip`), C51 recovers both masses within 0.06 (`tests/test_rainbow_trpo.py`).
+It passes all five probes with error 0.0, because every probe's return falls exactly on an atom.
+On CartPole, 5 seeds: curve average 377.7, second to 3-step (407.3) and ahead of DQN (231.3); final 500 on 4 of 5 seeds; predicted Q 94.92 against 99.00 received.
+Why distributional learning helps is still argued about: the mean is the same quantity DQN learns, and what changes is the training signal.
+
+## Noisy Networks for Exploration (Meire Fortunato et al., 2017)
+
+PDF: [`fortunato-2017-noisy-nets.pdf`](./fortunato-2017-noisy-nets.pdf)
+
+### The idea in one paragraph
+
+Replace ε-greedy with noise in the weights, $w = \mu + \sigma \varepsilon$, and learn σ by the same loss as μ.
+The greedy action of the current weight sample is the exploratory action.
+Factorised Gaussian noise needs one random number per input and per output instead of one per weight.
+For DQN the paper resamples the parameters before every action and makes every fully connected layer noisy.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| $\varepsilon_{ij} = f(e_i) f(e_j)$, $f(x) = \mathrm{sgn}(x)\sqrt{\lvert x\rvert}$ | factorised noise | `algos/noisy_dqn.py:58-61` |
+| $w = \mu + \sigma \odot \varepsilon$ | noisy weights in training mode; μ alone in evaluation | `algos/noisy_dqn.py:63-67` |
+| resample before every action, or once per episode | `resample="step"` or `"episode"` | `algos/noisy_dqn.py:116-119` |
+
+Here the first layer is plain and the last two are noisy.
+
+### What it got wrong / what came after
+
+On CartPole, 5 seeds: the only variant ending at 500 on every seed (curve average 307.5).
+The learned noise does not shrink: mean |σ| rises from 0.044 to between 0.065 and 0.072 on all 5 seeds.
+
+On long chains it fails (`experiments/noisy_chain.py`, 50,000 steps, 5 seeds, action indices scrambled per state):
+Noisy DQN never reaches the goal on Chain(20) or Chain(30), whether the noise is resampled every step or held for an episode; ε-greedy DQN reaches it on 2 of 5 seeds on each.
+At initialisation the noise changes the greedy action in 6.6% to 28.3% of (state, sample) pairs, against 50% for ε-greedy at ε = 1.
+HYPOTHESIS (unverified): that lower randomness at the start is why it never reaches the goal; a larger σ₀ would test it.
+
+Without the scrambling, the first run of that experiment had Noisy DQN reach the Chain(20) goal at steps 41 and 103.
+Those were not exploration: before any training, 3 of 5 fresh networks prefer "right" in every chain state, and on the plain chain "right" is the same action index everywhere (`envs/chain.py`, `ScrambledActions`).
+

@@ -36,11 +36,15 @@ SUCCESS = 0.8
 
 def distance_to_goal(env):
     """Fewest steps from each state to a terminating transition, by BFS on env.P.
-    Unreachable states get a large number."""
+    Unreachable states get a large number, and so do absorbing states (every
+    action loops back, terminated): GridWorld's goal cell is one, and starting
+    an episode there "succeeds" in one step with no reward."""
     n = env.n_states
     predecessors = {s: set() for s in range(n)}
     goal_adjacent = set()
     for s in range(n):
+        if all(s2 == s and terminated for a in range(env.n_actions) for _, s2, _, terminated in env.P[s][a]):
+            continue
         for a in range(env.n_actions):
             for prob, s2, _, terminated in env.P[s][a]:
                 if prob > 0 and terminated:

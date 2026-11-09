@@ -11,8 +11,12 @@ The tier's one comparison, `experiments/curriculum_vs_exploration.py`: tabular Q
 | ε-greedy | never (0/5) | 23,000 [21,000, 30,300] |
 | optimistic Q (Q₀ = 1) | 1,300 [1,100, 1,400] | 20,700 [16,700, 22,100] |
 | count bonus β = 0.1 | 72,500 [59,000, 88,000] | never (0/5) |
-| reverse curriculum | 17,500 [13,000, 22,000] | 19,000 [18,000, 23,500] |
+| reverse curriculum | 16,500 [12,500, 20,000] | 20,000 [15,000, 20,500] |
 | size curriculum | 850 [800, 1,200] | 1,400 [1,200, 1,550] |
+| random task (start band chosen uniformly) | 58,800 [38,800, 89,300] | 15,000 [13,700, 17,900] |
+| learning-progress teacher | 45,000 [34,100, 46,600] | 16,500 [12,800, 18,600] |
+
+The reverse-curriculum row was rerun after a fix on 2026-11-09: `distance_to_goal` gave the absorbing goal state distance 1, so it was a start state, and an episode there "succeeded" in one step with no reward. It now excludes absorbing states (`tests/test_exploration.py`, `test_the_absorbing_goal_cell_is_never_a_start`). Before the fix the row read 17,500 and 19,000.
 
 ## Curriculum Learning (Yoshua Bengio, Jerome Louradour, Ronan Collobert, Jason Weston, 2009)
 
@@ -36,7 +40,24 @@ The RL version here grows the task: solve a short chain or a small grid, then a 
 The fastest method in the table: 850 steps on Chain(30) and 1,400 on the 14×14 grid, every stage counted.
 The caveat is large: every cell of a chain or an open grid looks the same relative to the goal, so a goal-aligned copy is close to a perfect transfer.
 On tasks where a small instance is not a corner of the big one, there is no such mapping.
-The plan's automatic and failure curricula (`curriculum_automatic.py`, `curriculum_failure.py`) are not built.
+
+Every curriculum in the table uses a Q table, and a table cannot forget: each state has its own entry.
+`algos/curriculum_failure.py` runs a curriculum with a network instead: DQN on a goal-conditioned 7×7 grid (observation = position and goal), the four corners as four stages of 30,000 steps each, every goal re-evaluated every 1,000 steps (`experiments/curriculum_failure.py`, 5 seeds).
+
+| arm | seeds solving goals 1, 2, 3, 4 after the last stage |
+| --- | --- |
+| plain: replay of 2,000, current goal only | 0, 0, 0, 5 |
+| rehearsal: a quarter of episodes on earlier goals | 5, 4, 4, 5 |
+| big replay: 120,000, every stage kept | 5, 5, 5, 5 |
+
+With the plain schedule each goal is solved when its own stage ends and lost by the end of the next one; only the last goal survives.
+A curriculum that evaluates only the current stage reports success the whole way through.
+A large replay buffer is rehearsal by another name, which is one reason ordinary DQN runs rarely show this.
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| goal of each episode: an earlier stage's with probability ρ | rehearsal | `algos/curriculum_failure.py:98-104` |
+| greedy success on every goal, every 1,000 steps | the forgetting curve | `algos/curriculum_failure.py:69-83`, `133` |
 
 ## Unifying Count-Based Exploration and Intrinsic Motivation (Marc G. Bellemare et al., 2016)
 
@@ -112,17 +133,44 @@ It requires resetting the environment to arbitrary states.
 
 | Equation | What it is | file:line in this repo |
 | --- | --- | --- |
-| BFS on the transition table from terminating states | distance to the goal | `algos/curriculum_reverse.py:37-61` |
-| starts = states with distance ≤ d | the current ring | `algos/curriculum_reverse.py:89-90` |
-| d += 1 when greedy rollouts from those starts succeed ≥ 80% | the schedule | `algos/curriculum_reverse.py:64-77`, `algos/curriculum_reverse.py:96` |
+| BFS on the transition table from terminating states, absorbing states excluded | distance to the goal | `algos/curriculum_reverse.py:37-65` |
+| starts = states with distance ≤ d | the current ring | `algos/curriculum_reverse.py:93` |
+| d += 1 when greedy rollouts from those starts succeed ≥ 80% | the schedule | `algos/curriculum_reverse.py:68-81`, `algos/curriculum_reverse.py:100` |
 
 The paper picks new starts by random walks from the goal; this file uses the BFS distance, which is exact on a finite MDP.
 
 ### What it got wrong / what came after
 
-17,500 steps on Chain(30), where ε-greedy never succeeds, and 19,000 on the 14×14 grid against ε-greedy's 23,000.
+16,500 steps on Chain(30), where ε-greedy never succeeds, and 20,000 on the 14×14 grid against ε-greedy's 23,000.
 It helps most where exploration is the whole problem, and costs little where it is not.
+Its decision to move outward uses extra greedy rollouts that are not counted as steps; the automatic curricula below use only their training episodes.
 The arbitrary-reset requirement is the real limit: a simulator allows it, most physical or production systems do not.
+
+## Teacher-Student Curriculum Learning (Tambet Matiisen, Avital Oliver, Taco Cohen, John Schulman, 2017)
+
+PDF: [`matiisen-2017-teacher-student.pdf`](./matiisen-2017-teacher-student.pdf)
+
+### The idea in one paragraph
+
+A teacher chooses which task the student trains on next, as a non-stationary bandit whose reward is learning progress: the slope of the student's score on that task.
+The absolute value of the slope is used, so a task whose score is falling (forgetting) is practised again.
+The paper's Window algorithm keeps the last K scores per task and fits the slope by regression against timesteps.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| tasks = start states grouped into 6 bands of distance to the goal | the task set | `algos/curriculum_automatic.py:52-59` |
+| $LP_k = \lvert \overline{o}_{\text{newer half}} - \overline{o}_{\text{older half}} \rvert$ over the last 10 outcomes | learning progress | `algos/curriculum_automatic.py:67-76` |
+| argmax LP, uniform with probability 0.2 | the teacher's choice | `algos/curriculum_automatic.py:78-82` |
+| outcome = goal reached in that training episode | the score | `algos/curriculum_automatic.py:129` |
+
+Simplified from the paper: the half-window difference replaces the regression slope, and there is no bandit smoothing.
+
+### What it got wrong / what came after
+
+Same table as the rest of this tier (top of this file): the teacher beats random band choice on Chain(30), 45,000 against 58,800 steps, and loses to it on the 14×14 grid, 16,500 against 15,000.
+The paper does compare with uniform task sampling: it reports its teacher an order of magnitude faster on the Minecraft maze, and uniform sampling "competitive" on 2-D addition. Here it is the same split: on the grid uniform choice is the best of the three start-distribution methods, ahead of the hand-written reverse schedule (20,000).
 
 ## Exploration by Random Network Distillation (Yuri Burda, Harrison Edwards, Amos Storkey, Oleg Klimov, 2018)
 
@@ -144,19 +192,20 @@ The paper gives the intrinsic reward its own value head and treats it as non-epi
 
 ### What it got wrong / what came after
 
-Measured (`python experiments/rnd_chain.py`), Chain(n) with one-hot observations, 50,000 steps, 5 seeds:
+Measured (`python experiments/rnd_chain.py`), Chain(n) with one-hot observations and the action indices scrambled per state (`envs.chain.ScrambledActions`), 50,000 steps, 5 seeds:
 
 | | goal first reached (step) | greedy policy optimal at the end |
 | --- | --- | --- |
-| DQN, Chain(20) | 3,750 to 9,155 on 4 seeds; never on 1 | 4 / 5 |
-| DQN + RND, Chain(20) | 2,369 to 4,023 | 5 / 5 |
-| DQN, Chain(30) | 15,692 to 36,877 on 4 seeds; never on 1 | 2 / 5 |
-| DQN + RND, Chain(30) | 3,923 to 4,295 | 5 / 5 |
+| DQN, Chain(20) | 11,403 and 48,742 on 2 seeds; never on 3 | 2 / 5 |
+| DQN + RND, Chain(20) | 1,701 to 3,802 | 5 / 5 |
+| DQN, Chain(30) | 36,898 and 48,453 on 2 seeds; never on 3 | 0 / 5 |
+| DQN + RND, Chain(30) | 4,287 to 4,903 | 5 / 5 |
 
-Plain DQN's successes on a chain where a random walk succeeds with probability $2^{-19}$ are not exploration.
-HYPOTHESIS (unverified): the fresh network happens to prefer "right" in most states, and once ε is small it walks straight to the goal.
+The first version of this table was measured on the plain chain, where "right" is action 1 in every state, and had DQN optimal on 4 / 5 (Chain(20)) and 2 / 5 (Chain(30)).
+Those successes were mostly initialisation, not exploration: before any training, 3 of 5 fresh DQN networks prefer "right" in every state of Chain(20).
+Scrambling the action meaning per state removes that shortcut. DQN drops to 2 / 5 and 0 / 5; RND stays at 5 / 5 on both.
 
-A single-head version, with the bonus added to the reward, was tried first and failed in an informative way.
+A single-head version, with the bonus added to the reward, was tried first and failed in an informative way (measured on the plain chain, before the scrambling).
 On Chain(20) it reached the goal at 2,281 to 4,023 steps (DQN: 3,750 to 9,155 when it succeeds) and ended with a greedy return of 0 on 4 of 5 seeds.
 Fading the bonus to zero and recomputing it per batch did not help.
 Its learned Q was flat at about 1.438 for both actions in every state, above the largest achievable return of 1.0, so the greedy action was noise.

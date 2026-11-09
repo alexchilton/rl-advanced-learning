@@ -174,6 +174,24 @@ PAPERS: list[dict] = [
         abs_url="https://arxiv.org/abs/1710.02298",
         code="https://github.com/google-deepmind/dqn_zoo",
     ),
+    dict(
+        key="bellemare-2017-distributional",
+        title="A Distributional Perspective on Reinforcement Learning",
+        authors="Marc G. Bellemare, Will Dabney, Remi Munos",
+        year=2017,
+        tier="deep-value",
+        url="https://arxiv.org/pdf/1707.06887",
+        abs_url="https://arxiv.org/abs/1707.06887",
+    ),
+    dict(
+        key="fortunato-2017-noisy-nets",
+        title="Noisy Networks for Exploration",
+        authors="Meire Fortunato et al.",
+        year=2017,
+        tier="deep-value",
+        url="https://arxiv.org/pdf/1706.10295",
+        abs_url="https://arxiv.org/abs/1706.10295",
+    ),
     # -- policy-gradient -------------------------------------------------
     dict(
         key="williams-1992-reinforce",
@@ -411,6 +429,15 @@ PAPERS: list[dict] = [
         url="https://arxiv.org/pdf/1707.05300",
         abs_url="https://arxiv.org/abs/1707.05300",
         code=None,
+    ),
+    dict(
+        key="matiisen-2017-teacher-student",
+        title="Teacher-Student Curriculum Learning",
+        authors="Tambet Matiisen, Avital Oliver, Taco Cohen, John Schulman",
+        year=2017,
+        tier="exploration-curriculum",
+        url="https://arxiv.org/pdf/1707.00183",
+        abs_url="https://arxiv.org/abs/1707.00183",
     ),
     # -- practice ----------------------------------------------------------
     dict(

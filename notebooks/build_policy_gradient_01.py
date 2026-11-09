@@ -18,20 +18,21 @@ def code(text):
 md(r"""
 # Policy gradient: from REINFORCE to SAC
 
-**Code:** [`reinforce.py`](../algos/reinforce.py) · [`reinforce_baseline.py`](../algos/reinforce_baseline.py) · [`a2c.py`](../algos/a2c.py) · [`ppo.py`](../algos/ppo.py) · [`ddpg.py`](../algos/ddpg.py) · [`td3.py`](../algos/td3.py) · [`sac.py`](../algos/sac.py) · [`experiments/pg_variance.py`](../experiments/pg_variance.py) · [`experiments/policy_gradient_sweep.py`](../experiments/policy_gradient_sweep.py)
-**Papers:** Williams 1992 ([PDF](../papers/policy-gradient/williams-1992-reinforce.pdf)), Sutton et al. 1999 ([PDF](../papers/policy-gradient/sutton-1999-policy-gradient.pdf)), Schulman 2015 GAE ([PDF](../papers/policy-gradient/schulman-2015-gae.pdf)), Mnih 2016 A3C ([PDF](../papers/policy-gradient/mnih-2016-a3c.pdf)), Schulman 2017 PPO ([PDF](../papers/policy-gradient/schulman-2017-ppo.pdf)), Lillicrap 2015 DDPG ([PDF](../papers/policy-gradient/lillicrap-2015-ddpg.pdf)), Fujimoto 2018 TD3 ([PDF](../papers/policy-gradient/fujimoto-2018-td3.pdf)), Haarnoja 2018 SAC ([PDF](../papers/policy-gradient/haarnoja-2018-sac.pdf)) ·
+**Code:** [`reinforce.py`](../algos/reinforce.py) · [`reinforce_baseline.py`](../algos/reinforce_baseline.py) · [`a2c.py`](../algos/a2c.py) · [`trpo.py`](../algos/trpo.py) · [`ppo.py`](../algos/ppo.py) · [`ddpg.py`](../algos/ddpg.py) · [`td3.py`](../algos/td3.py) · [`sac.py`](../algos/sac.py) · [`experiments/pg_variance.py`](../experiments/pg_variance.py) · [`experiments/policy_gradient_sweep.py`](../experiments/policy_gradient_sweep.py)
+**Papers:** Williams 1992 ([PDF](../papers/policy-gradient/williams-1992-reinforce.pdf)), Sutton et al. 1999 ([PDF](../papers/policy-gradient/sutton-1999-policy-gradient.pdf)), Schulman 2015 GAE ([PDF](../papers/policy-gradient/schulman-2015-gae.pdf)), Mnih 2016 A3C ([PDF](../papers/policy-gradient/mnih-2016-a3c.pdf)), Schulman 2015 TRPO ([PDF](../papers/policy-gradient/schulman-2015-trpo.pdf)), Schulman 2017 PPO ([PDF](../papers/policy-gradient/schulman-2017-ppo.pdf)), Lillicrap 2015 DDPG ([PDF](../papers/policy-gradient/lillicrap-2015-ddpg.pdf)), Fujimoto 2018 TD3 ([PDF](../papers/policy-gradient/fujimoto-2018-td3.pdf)), Haarnoja 2018 SAC ([PDF](../papers/policy-gradient/haarnoja-2018-sac.pdf)) ·
 **Notes:** [`papers/policy-gradient/notes.md`](../papers/policy-gradient/notes.md)
 
 What you will see:
 
 1. **Why baselines exist, measured:** at one frozen policy, the gradient's variance under four weightings. The learned baseline cuts it about twelvefold.
-2. REINFORCE, REINFORCE + baseline, A2C and PPO on CartPole at an equal budget of 100,000 steps, 5 seeds each.
+2. REINFORCE, REINFORCE + baseline, A2C, TRPO and PPO on CartPole at an equal budget of 100,000 steps, 5 seeds each.
 3. **GAE's λ dial** from one-step TD (λ = 0) to Monte Carlo (λ = 1).
 4. **PPO's clip under load:** the epoch count raised until the clip fraction shows it is working hard.
-5. DDPG, TD3 and SAC on Pendulum; **TD3's three fixes removed one at a time**; **SAC's temperature** fixed against learned.
-6. A trained SAC policy swinging the pendulum up, frame by frame.
+5. **TRPO's trust region:** the quadratic KL model against the real KL along one natural-gradient step, and the trust region size δ swept.
+6. DDPG, TD3 and SAC on Pendulum; **TD3's three fixes removed one at a time**; **SAC's temperature** fixed against learned.
+7. A trained SAC policy swinging the pendulum up, frame by frame.
 
-Sections 1, 4 and 6 run live (about 3 minutes on CPU). Sections 2, 3 and 5 are 95 runs read from `experiments/results/policy_gradient/`;
+Sections 2, 5, 6 (first half) and 8 run live (about 3 minutes on CPU). Sections 3, 4, 6 (second half) and 7 are 112 runs read from `experiments/results/policy_gradient/`;
 `python experiments/policy_gradient_sweep.py <group>` regenerates them.
 """)
 
@@ -171,13 +172,13 @@ plt.show()
 
 # ----------------------------------------------------------------------
 md(r"""
-## 3. Four discrete methods, same budget
+## 3. Five discrete methods, same budget
 
-100,000 environment steps each on CartPole, 5 seeds. REINFORCE updates every 8 episodes; A2C every 32 steps; PPO every 1,024 steps with 10 epochs of minibatches.
+100,000 environment steps each on CartPole, 5 seeds. REINFORCE updates every 8 episodes; A2C every 32 steps; TRPO and PPO every 1,024 steps. TRPO takes one constrained natural-gradient step per batch; PPO takes 10 epochs of clipped minibatch steps.
 """)
 
 code(r"""
-order = ["REINFORCE", "REINFORCE + baseline", "A2C", "PPO"]
+order = ["REINFORCE", "REINFORCE + baseline", "A2C", "TRPO", "PPO"]
 discrete = load("discrete")
 table(discrete, order)
 ax = curves(discrete, "CartPole-v1: greedy return, median and range over 5 seeds", order=order)
@@ -185,7 +186,8 @@ ax.axhline(500, color="k", ls="--", lw=1); plt.show()
 """)
 
 md(r"""
-- **PPO** is the best of the four: 500 on all 5 seeds, curve average 467.9.
+- **TRPO** is the best of the five: 500 on all 5 seeds and a curve average of 497.6, so it is at 500 almost from the first evaluation.
+- **PPO** also ends at 500 on all 5 seeds, curve average 467.9. Engstrom et al. 2020 (`papers/practice/`) found PPO's lead over TRPO on MuJoCo came mostly from code-level details; on CartPole at this budget the order is reversed. One task, 5 seeds, so not a general ranking.
 - **A2C** also ends at 500 on every seed but starts slower (curve average 340.2).
 - **The baseline** lifts REINFORCE's curve average from 389.6 to 406.6. That is less than section 2's twelvefold variance cut suggests, because Adam already rescales the noisy gradient's step size.
 - **Plain REINFORCE** gets there too on CartPole, but its final returns range from 240.9 to 496.1.
@@ -261,7 +263,84 @@ The table shows the first and last update rather than a mean over the run. Avera
 
 # ----------------------------------------------------------------------
 md(r"""
-## 6. Continuous control: DDPG, TD3, SAC on Pendulum
+## 6. TRPO's trust region
+
+TRPO solves $\max_\theta L(\theta)$ subject to $\overline{KL}(\pi_{old}\,\|\,\pi_\theta) \le \delta$ to second order ([`algos/trpo.py`](../algos/trpo.py)):
+the direction is the natural gradient $x = F^{-1} g$, found by conjugate gradient from Fisher-vector products alone, and its length is chosen so the **quadratic model** of the KL, $\tfrac12 s^2\, x^\top F x$, equals δ.
+Below, one batch from an untrained policy: the real KL and the real surrogate improvement along that direction, against the model.
+Where the two KL curves part, the line search has to step back.
+""")
+
+code(r"""
+from algos import trpo
+make = lambda: gym.make("CartPole-v1")
+torch.manual_seed(0)
+model = a2c.ActorCritic(4, 2)
+batch = a2c.collect(a2c.Rollout(make(), 0), model, 1_024)
+adv, _ = a2c.gae(batch); adv = (adv - adv.mean()) / (adv.std() + 1e-8)
+obs, actions, old_logp = batch["obs"], batch["actions"], batch["logp"]
+params = list(model.actor.parameters())
+old = torch.distributions.Categorical(logits=model.actor(obs).detach())
+surrogate = lambda: (torch.exp(model.distribution(obs).log_prob(actions) - old_logp) * adv).mean()
+mean_kl = lambda: torch.distributions.kl_divergence(old, model.distribution(obs)).mean()
+fvp = lambda v: trpo.flat_grad(trpo.flat_grad(mean_kl(), params, create_graph=True) @ v, params) + trpo.DAMPING * v
+g = trpo.flat_grad(surrogate(), params)
+x = trpo.conjugate_gradient(fvp, g)
+xFx = float(x @ fvp(x))
+theta0 = torch.cat([p.data.reshape(-1) for p in params])
+scales = np.linspace(0, 8 * np.sqrt(2 * trpo.MAX_KL / xFx), 41)
+real_kl, gain = [], []
+for scale in scales:
+    trpo.set_flat(params, theta0 + scale * x)
+    with torch.no_grad():
+        real_kl.append(float(mean_kl())); gain.append(float(surrogate()))
+trpo.set_flat(params, theta0)
+s_star = np.sqrt(2 * trpo.MAX_KL / xFx)
+fig, axs = plt.subplots(1, 2, figsize=(12, 3.4))
+axs[0].plot(scales / s_star, real_kl, label="real mean KL"); axs[0].plot(scales / s_star, 0.5 * scales**2 * xFx, "--", label="quadratic model ½ s² xᵀFx")
+axs[0].axhline(trpo.MAX_KL, color="k", lw=1, ls=":", label=f"δ = {trpo.MAX_KL}"); axs[0].set_ylim(0, 0.2)
+axs[1].plot(scales / s_star, np.array(gain) - gain[0], color="tab:green"); axs[1].axvline(1, color="k", lw=1, ls=":")
+axs[0].set_title("KL along the natural-gradient direction"); axs[1].set_title("surrogate improvement L(θ) − L(θ_old)")
+for ax in axs: ax.set_xlabel("step length / TRPO's step length"); ax.legend(fontsize=8) if ax is axs[0] else None
+plt.show()
+i = int(np.argmin(np.abs(scales / s_star - 1)))
+print(f"at TRPO's step: model KL {trpo.MAX_KL}, real KL {real_kl[i]:.4f}, surrogate gain {gain[i] - gain[0]:.4f}")
+""")
+
+md(r"""
+δ sets how far each update may move the policy. 3 seeds per δ, CartPole, 100,000 steps.
+The right panel is the KL of the step TRPO actually accepted, at each evaluation; the dotted lines are the δ limits.
+""")
+
+code(r"""
+kl_rows = load("trpo_kl")
+kl_order = [f"delta={d}" for d in (0.001, 0.01, 0.05, 0.2)]
+table(kl_rows, kl_order)
+fig, axs = plt.subplots(1, 2, figsize=(13, 3.6))
+curves(kl_rows, "TRPO on CartPole for different δ", ax=axs[0], order=kl_order); axs[0].axhline(500, color="k", ls="--", lw=1)
+for k, name in enumerate(kl_order):
+    for r in kl_rows[name]:
+        axs[1].plot([e["step"] for e in r["log"]], [e["kl"] for e in r["log"]], "o", ms=3, color=f"C{k}",
+                    label=name if r is kl_rows[name][0] else None)
+    axs[1].axhline(float(name.split("=")[1]), color=f"C{k}", ls=":", lw=1)
+axs[1].set_yscale("log"); axs[1].set_title("KL of the accepted step"); axs[1].set_xlabel("environment steps"); axs[1].legend(fontsize=8)
+plt.show()
+low = min(e["score"] for r in kl_rows["delta=0.2"] for e in r["log"][1:])
+print(f"largest accepted KL over every update logged: " +
+      ", ".join(f"{n}: {max(e['kl'] for r in kl_rows[n] for e in r['log']):.4f}" for n in kl_order))
+print(f"delta=0.2: lowest greedy return after the first evaluation {low:.0f}")
+""")
+
+md(r"""
+- **δ = 0.001** is the slowest start: the first evaluations are 235, 431 and 286, against 451 to 500 for δ = 0.01.
+- **δ = 0.2** learns, then falls back: its returns after reaching 500 drop to 170, 413 and 450. The line search still holds every accepted KL below δ, but δ itself allows a large change.
+- **δ = 0.01**, the paper's value, has the best curve average, 499.6.
+- The accepted KL never exceeds δ in any logged update. That is the guarantee PPO gives up for a `clamp`.
+""")
+
+# ----------------------------------------------------------------------
+md(r"""
+## 7. Continuous control: DDPG, TD3, SAC on Pendulum
 
 20,000 steps, 5 seeds, evaluated with the deterministic action (no exploration noise) over 5 episodes every 2,000 steps.
 """)
@@ -340,7 +419,7 @@ md(r"""
 
 # ----------------------------------------------------------------------
 md(r"""
-## 7. A trained SAC policy, frame by frame
+## 8. A trained SAC policy, frame by frame
 
 SAC, learned α, 20,000 steps, seed 0, trained live. Then one episode with the deterministic action from a hanging start.
 """)
@@ -375,7 +454,7 @@ ax.set_xlabel("step"); ax.set_title("swing back and forth to build energy, then 
 
 # ----------------------------------------------------------------------
 md(r"""
-## 8. What breaks, and how you would know
+## 9. What breaks, and how you would know
 
 | method | symptom | likely cause |
 | --- | --- | --- |
@@ -385,6 +464,8 @@ md(r"""
 | A2C / PPO | return capped below the time limit | truncation treated as termination (`a2c.py` folds γV(s) into the last reward) |
 | PPO | clip fraction ≈ 0, KL ≈ 1e-4 | too few epochs or too small a learning rate: PPO is slow A2C |
 | PPO | ratio ≠ 1 on the first minibatch | old log-probabilities stored from the wrong network |
+| TRPO | every line search backtracks to the end | the policy never moves: wrong sign of g, or a Fisher product without `create_graph=True` (zero curvature) |
+| TRPO | accepted KL above δ | the "old" distribution is not detached from before the step |
 | DDPG / TD3 | mean Q climbs, return does not | actor exploiting critic overestimation |
 | SAC | entropy far below target while α rises | tanh log-probability correction missing (`sac.py`, `TanhGaussian.sample`) |
 """)

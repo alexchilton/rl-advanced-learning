@@ -5,13 +5,14 @@
 
 GROUP is one of:
 
-    discrete      REINFORCE, REINFORCE + baseline, A2C, PPO; CartPole-v1, 100,000 steps
+    discrete      REINFORCE, REINFORCE + baseline, A2C, TRPO, PPO; CartPole-v1, 100,000 steps
     gae           PPO with lambda in {0, 0.5, 0.9, 0.95, 1}: the bias-variance dial
+    trpo_kl       TRPO with the trust region delta in {0.001, 0.01, 0.05, 0.2}
     continuous    DDPG, TD3, SAC (learned alpha); Pendulum-v1, 20,000 steps
     td3_ablation  TD3 with each of its three fixes removed, and with all three removed
     sac_alpha     SAC with alpha fixed at 0.01, 0.1, 1 against the learned alpha
 
-5 seeds per configuration (3 for gae). One JSON per run in
+5 seeds per configuration (3 for gae and trpo_kl). One JSON per run in
 experiments/results/policy_gradient/, written when the run ends, so `--resume`
 skips finished runs and a crash costs one run.
 """
@@ -31,7 +32,9 @@ RESULTS = pathlib.Path(__file__).resolve().parent / "results" / "policy_gradient
 GROUPS = {
     "discrete": dict(env="CartPole-v1", steps=100_000, seeds=range(5), configs={
         "REINFORCE": ("reinforce", {}), "REINFORCE + baseline": ("reinforce_baseline", {}),
-        "A2C": ("a2c", {}), "PPO": ("ppo", {})}),
+        "A2C": ("a2c", {}), "TRPO": ("trpo", {}), "PPO": ("ppo", {})}),
+    "trpo_kl": dict(env="CartPole-v1", steps=100_000, seeds=range(3), configs={
+        f"delta={delta}": ("trpo", dict(max_kl=delta)) for delta in (0.001, 0.01, 0.05, 0.2)}),
     "gae": dict(env="CartPole-v1", steps=100_000, seeds=range(3), configs={
         f"lambda={lam}": ("ppo", dict(lam=lam)) for lam in (0.0, 0.5, 0.9, 0.95, 1.0)}),
     "continuous": dict(env="Pendulum-v1", steps=20_000, seeds=range(5), configs={

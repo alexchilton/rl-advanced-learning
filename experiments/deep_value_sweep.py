@@ -6,7 +6,7 @@
 
 ablation   DQN with replay and the target network removed one at a time
            (`buffer_size=1` is no replay, `target_update=1` is no target network).
-compare    DQN, Double, Dueling, PER and 3-step, identical settings otherwise.
+compare    DQN, Double, Dueling, PER, 3-step, C51 and Noisy, identical settings otherwise.
 
 Every run writes one JSON file to experiments/results/deep_value/ as soon as it
 finishes, so a crash costs one run and `--resume` skips everything already done.
@@ -39,7 +39,7 @@ ABLATION = {
     "no replay": dict(buffer_size=1),
     "neither": dict(buffer_size=1, target_update=1),
 }
-VARIANTS = ("dqn", "double_dqn", "dueling_dqn", "per_dqn", "n_step_dqn")
+VARIANTS = ("dqn", "double_dqn", "dueling_dqn", "per_dqn", "n_step_dqn", "c51_dqn", "noisy_dqn")
 
 
 def run_one(module_name, kwargs, seed):

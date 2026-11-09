@@ -42,8 +42,14 @@ NOISE_CLIP = 0.5
 def train(env, total_steps=20_000, gamma=GAMMA, tau=TAU, learning_rate=LEARNING_RATE, buffer_size=BUFFER_SIZE,
           batch_size=BATCH_SIZE, hidden=HIDDEN, start_steps=START_STEPS, exploration_noise=EXPLORATION_NOISE,
           n_critics=N_CRITICS, policy_delay=POLICY_DELAY, target_noise=TARGET_NOISE, noise_clip=NOISE_CLIP,
-          seed=0, evaluate=None, eval_every=2_000):
-    """Returns (actor, log). Log rows: step, score, mean Q (first critic), critic loss."""
+          seed=0, evaluate=None, eval_every=2_000, obs_transform=None):
+    """Returns (actor, log). Log rows: step, score, mean Q (first critic), critic loss.
+
+    `obs_transform` maps a tensor of stored observations to what the networks see,
+    applied when acting and to every sampled batch, so the replay buffer holds raw
+    observations (`experiments/obs_normalisation.py`, sample-time normalisation).
+    """
+    view = obs_transform or (lambda x: x)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     obs_dim, act_dim, scale = spaces(env)
@@ -61,7 +67,7 @@ def train(env, total_steps=20_000, gamma=GAMMA, tau=TAU, learning_rate=LEARNING_
             action = rng.uniform(-1, 1, act_dim).astype(np.float32)
         else:
             with torch.no_grad():
-                action = actor(torch.as_tensor(obs)[None])[0].numpy()
+                action = actor(view(torch.as_tensor(obs)[None]))[0].numpy()
             action = np.clip(action + exploration_noise * rng.standard_normal(act_dim), -1, 1).astype(np.float32)
         next_obs, reward, terminated, truncated, _ = env.step(action * scale)
         next_obs = np.asarray(next_obs, np.float32)
@@ -73,6 +79,7 @@ def train(env, total_steps=20_000, gamma=GAMMA, tau=TAU, learning_rate=LEARNING_
         if step > start_steps:
             updates += 1
             o, a, r, o2, done = buffer.sample(batch_size)
+            o, o2 = view(o), view(o2)
             with torch.no_grad():
                 # ---- fix 3: target policy smoothing
                 noise = (torch.randn_like(a) * target_noise).clamp(-noise_clip, noise_clip)

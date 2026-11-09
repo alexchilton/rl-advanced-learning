@@ -51,7 +51,7 @@ The target takes the max over the next state's actions, whatever the agent actua
 
 The tie-break is an implementation detail with a large effect.
 Measured in `notebooks/tabular_01_q_learning.ipynb`, sparse 8×8 GridWorld, 3 seeds: `np.argmax` ends at 0.0 on every seed; random ties end at the optimum 0.5133 on every seed.
-The max causes two later problems: overestimation (Double Q-learning, below, not built here) and extrapolation error once the data is fixed (`algos/offline_q.py`).
+The max causes two later problems: overestimation (Double Q-learning, below, `algos/double_q.py`) and extrapolation error once the data is fixed (`algos/offline_q.py`).
 After: SARSA (on-policy, below), Double Q-learning, DQN.
 
 ## Integrated Architectures for Learning, Planning, and Reacting Based on Approximating Dynamic Programming (Richard S. Sutton, 1990)

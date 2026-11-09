@@ -66,7 +66,33 @@ A2C and PPO (below) are that trade.
 
 PDF: [`schulman-2015-trpo.pdf`](./schulman-2015-trpo.pdf)
 
-Not built in this repo. PPO (below) replaces TRPO's KL constraint with a clipped ratio; both PPO files log the approximate KL that TRPO would constrain (`algos/ppo.py:79`).
+### The idea in one paragraph
+
+A fixed-length step in parameter space can be a tiny or a catastrophic change to the policy, depending on the parametrisation.
+TRPO bounds the step in the space that matters: it maximises the importance-weighted surrogate subject to a bound δ on the mean KL between the old and new policies.
+To second order the solution is the natural gradient $F^{-1} g$, scaled so the quadratic KL model equals δ, followed by a line search that checks the real KL and the real improvement.
+The Fisher matrix is never formed: conjugate gradient needs only Fisher-vector products, which are two backward passes through the KL.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| $g = \nabla_\theta \mathbb{E}[\tfrac{\pi_\theta}{\pi_{old}} \hat A]$ | surrogate gradient | `algos/trpo.py:108` |
+| $F v = \nabla_\theta (\nabla_\theta \overline{KL} \cdot v) + \lambda v$ | Fisher-vector product, damping λ = 0.1 | `algos/trpo.py:110-112` |
+| solve $F x = g$ | conjugate gradient, 10 iterations | `algos/trpo.py:61-76`, `114` |
+| $s = \sqrt{2\delta / x^\top F x}$ | step length from the quadratic model | `algos/trpo.py:115` |
+| halve until $\overline{KL} \le \delta$ and $L$ improved | backtracking line search | `algos/trpo.py:123-129` |
+
+Checked in `tests/test_rainbow_trpo.py`: conjugate gradient against `torch.linalg.solve`, and the Fisher-vector product against an explicitly built KL Hessian (agreement to 3e-8).
+
+### What it got wrong / what came after
+
+CartPole, 100,000 steps, 5 seeds: TRPO ends at 500 on every seed with a curve average of 497.6, ahead of PPO (467.9) and A2C (340.2).
+On one batch from an untrained policy, the real KL at TRPO's step was 0.0082 against the quadratic model's 0.01.
+δ swept over 0.001, 0.01, 0.05 and 0.2 (3 seeds each): curve averages 476.0, 499.6, 492.9 and 474.8.
+δ = 0.001 starts slowly (first evaluations 235, 431, 286); δ = 0.2 reaches 500 and then drops back to 170, 413 and 450 on later evaluations.
+The accepted KL never exceeded δ in any logged update.
+The cost is machinery: a conjugate-gradient solve and a line search per update, and a separate critic optimiser. PPO (below) replaces all of it with one clamp, and Engstrom et al. 2020 (`papers/practice/`) found its advantage over TRPO on MuJoCo came mostly from code-level details. On CartPole at this budget the order is reversed.
 
 ## High-Dimensional Continuous Control Using Generalized Advantage Estimation (John Schulman, Philipp Moritz, Sergey Levine, Michael Jordan, Pieter Abbeel, 2015)
 

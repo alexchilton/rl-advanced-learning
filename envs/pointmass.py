@@ -12,11 +12,12 @@ magnitude by roughly an order of magnitude, and the two that vary most are the
 two that matter least at the start of training.
 
 A network fed this raw has to learn first-layer weights ten times smaller on two
-of its four inputs before it can learn anything else, and with one learning rate
-for all of them it mostly does not. Wrap the observation in a running mean/std
-normaliser and the same agent with the same hyperparameters learns. That one-line
-difference is the demo in `experiments/obs_normalisation.py`, and it is the most
-common reason a correct implementation does nothing at all.
+of its four inputs. Measured with TD3 (`experiments/obs_normalisation.py`, 30,000
+steps, 3 seeds), it still learns: final returns -7.6 to -5.4 against the PD
+controller's -13.3. A running mean/std normaliser applied when a batch is sampled
+does better on every seed (-4.3 to -4.1). Applied when transitions are stored,
+the same normaliser is the worst of the three (-71.9 to -5.1), because replay
+then holds the same states at several scales while the statistics move.
 
 **The action bound matters.** Actions are clipped to `[-1, 1]`. A Gaussian policy
 that ignores the bound puts most of its probability mass outside it, so the

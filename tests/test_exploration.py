@@ -59,3 +59,51 @@ def test_her_solves_bits_plain_dqn_cannot():
                            eval_every=600, seed=0)
         rates[k] = log[-1]["success"]
     assert rates[4] >= 0.9 and rates[0] <= 0.1, rates
+
+
+def test_teacher_ignores_solved_and_hopeless_tasks_and_picks_the_frontier():
+    """LP measured as the success rate itself would pick the solved task forever."""
+    from algos.curriculum_automatic import ProgressTeacher
+
+    teacher = ProgressTeacher(3, window=10, epsilon=0.0)
+    for _ in range(10):
+        teacher.update(0, 1.0)          # solved
+        teacher.update(2, 0.0)          # hopeless
+    for outcome in [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]:
+        teacher.update(1, outcome)      # improving
+    assert teacher.progress().tolist() == [0.0, 1.0, 0.0]
+    assert teacher.choose(np.random.default_rng(0)) == 1
+
+
+def test_automatic_curriculum_buckets_cover_every_state_including_the_real_start():
+    from algos.curriculum_automatic import buckets
+
+    env = Chain(n=30, max_steps=120)
+    groups = buckets(env)
+    covered = np.sort(np.concatenate(groups))
+    real_start = int(np.argmax(env.start_distribution))
+    assert real_start in groups[-1]
+    assert len(covered) == len(set(covered.tolist())) == env.n_states - 1  # every state but the absorbing goal
+
+
+def test_goal_grid_puts_the_goal_in_the_observation():
+    """Without the goal in the observation the stages conflict and forgetting is the right answer."""
+    from algos.curriculum_failure import GOALS, GoalGrid
+
+    env = GoalGrid()
+    seen = set()
+    for goal in GOALS:
+        env.set_goal(goal)
+        obs, _ = env.reset(seed=0)
+        seen.add(tuple(np.round(obs[2:], 3)))
+    assert len(seen) == len(GOALS)
+
+
+def test_the_absorbing_goal_cell_is_never_a_start():
+    """Its self-loop is terminal: a start there 'succeeds' in one step with zero reward."""
+    from algos.curriculum_automatic import buckets
+
+    grid = GridWorld(size=6, reward_mode="sparse")
+    goal = grid.index(grid.goal)
+    assert curriculum_reverse.distance_to_goal(grid)[goal] >= 10**6
+    assert goal not in np.concatenate(buckets(grid))

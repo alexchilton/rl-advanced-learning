@@ -4,7 +4,7 @@ Reading list for `rl_advanced_learning`, grouped by tier as in `docs/rl-curricul
 The PDFs are committed in the matching subdirectory, so every link below opens on GitHub.
 `fetch.py` re-downloads them from their public sources if you want fresh copies.
 
-Each tier subdirectory also has a `notes.md` stub for mapping equations to line numbers in this repo, per the plan.
+Each tier subdirectory also has a `notes.md` mapping equations to line numbers in this repo, with the measured results.
 
 Run `python papers/fetch.py` to download everything.
 See `code_links.md` for notes on the reference implementations linked below.
@@ -30,6 +30,8 @@ See `code_links.md` for notes on the reference implementations linked below.
 | Prioritized Experience Replay | 2015 | Tom Schaul, John Quan, Ioannis Antonoglou, David Silver | [`schaul-2015-per.pdf`](deep-value/schaul-2015-per.pdf) | [abs](https://arxiv.org/abs/1511.05952) | [link](https://github.com/google-deepmind/dqn_zoo) |
 | Dueling Network Architectures for Deep Reinforcement Learning | 2016 | Ziyu Wang et al. | [`wang-2016-dueling.pdf`](deep-value/wang-2016-dueling.pdf) | [abs](https://arxiv.org/abs/1511.06581) | [link](https://github.com/google-deepmind/dqn_zoo) |
 | Rainbow: Combining Improvements in Deep Reinforcement Learning | 2017 | Matteo Hessel et al. | [`hessel-2017-rainbow.pdf`](deep-value/hessel-2017-rainbow.pdf) | [abs](https://arxiv.org/abs/1710.02298) | [link](https://github.com/google-deepmind/dqn_zoo) |
+| A Distributional Perspective on Reinforcement Learning | 2017 | Marc G. Bellemare, Will Dabney, Remi Munos | [`bellemare-2017-distributional.pdf`](deep-value/bellemare-2017-distributional.pdf) | [abs](https://arxiv.org/abs/1707.06887) | none listed |
+| Noisy Networks for Exploration | 2017 | Meire Fortunato et al. | [`fortunato-2017-noisy-nets.pdf`](deep-value/fortunato-2017-noisy-nets.pdf) | [abs](https://arxiv.org/abs/1706.10295) | none listed |
 
 ## Policy gradient (`policy-gradient/`)
 
@@ -66,6 +68,7 @@ See `code_links.md` for notes on the reference implementations linked below.
 | Unifying Count-Based Exploration and Intrinsic Motivation | 2016 | Marc G. Bellemare et al. | [`bellemare-2016-count-based.pdf`](exploration-curriculum/bellemare-2016-count-based.pdf) | [abs](https://arxiv.org/abs/1606.01868) | none public |
 | Hindsight Experience Replay | 2017 | Marcin Andrychowicz et al. | [`andrychowicz-2017-her.pdf`](exploration-curriculum/andrychowicz-2017-her.pdf) | [abs](https://arxiv.org/abs/1707.01495) | [link](https://github.com/openai/baselines) |
 | Reverse Curriculum Generation for Reinforcement Learning | 2017 | Carlos Florensa, David Held, Markus Wulfmeier, Michael Zhang, Pieter Abbeel | [`florensa-2017-reverse-curriculum.pdf`](exploration-curriculum/florensa-2017-reverse-curriculum.pdf) | [abs](https://arxiv.org/abs/1707.05300) | none public |
+| Teacher-Student Curriculum Learning | 2017 | Tambet Matiisen, Avital Oliver, Taco Cohen, John Schulman | [`matiisen-2017-teacher-student.pdf`](exploration-curriculum/matiisen-2017-teacher-student.pdf) | [abs](https://arxiv.org/abs/1707.00183) | none listed |
 | Exploration by Random Network Distillation | 2018 | Yuri Burda, Harrison Edwards, Amos Storkey, Oleg Klimov | [`burda-2018-rnd.pdf`](exploration-curriculum/burda-2018-rnd.pdf) | [abs](https://arxiv.org/abs/1810.12894) | [link](https://github.com/openai/random-network-distillation) |
 
 ## Practice (the debugging half) (`practice/`)

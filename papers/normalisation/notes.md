@@ -20,16 +20,25 @@ What is built is its input-side relative used throughout deep RL: a running mean
 
 | Equation | What it is | file:line in this repo |
 | --- | --- | --- |
-| $\hat x = \mathrm{clip}((x - \mu)/\sigma, -10, 10)$, μ and σ running (Welford) | observation normaliser | `experiments/obs_normalisation.py:33-47` |
+| $\hat x = \mathrm{clip}((x - \mu)/\sigma, -10, 10)$, μ and σ running (Welford) | observation normaliser | `experiments/obs_normalisation.py`, `RunningNorm` |
+| $\hat x$ applied to every sampled batch with the current μ, σ | sample-time normalisation | `algos/td3.py`, `obs_transform` |
 
 ### What it got wrong / what came after
 
 TD3 on PointMass, 30,000 steps, 3 seeds; the PD controller in `PointMass.expert_action` scores −13.34.
-Raw observations: final −7.57, −5.41, −5.95, reaching about −15 within 6,000 steps on every seed.
-Normalised: final −71.85, −17.58, −5.11, much slower on every seed.
-This contradicts the claim in `envs/pointmass.py` that the raw agent mostly does not learn and a normaliser fixes it.
-HYPOTHESIS (unverified): the normaliser is applied when observations are stored, so replay entries collected under early statistics are on a different scale from later ones while the statistics are still moving. Storing raw observations and normalising at sample time would test it.
-In RL, BatchNorm itself is awkward for the same reason: batch statistics differ between replay batches and single-state action selection.
+What differs between the three modes is when the normaliser is applied.
+
+| mode | final return per seed | return at 9,000 steps |
+| --- | --- | --- |
+| raw | −7.57, −5.41, −5.95 | −15.9, −13.1, −15.1 |
+| normalised when stored | −71.85, −17.58, −5.11 | −102.1, −149.9, −96.8 |
+| normalised when sampled | −4.25, −4.10, −4.27 | −10.6, −4.6, −5.2 |
+
+Normalising at store time is the worst of the three, and normalising at sample time the best, on every seed.
+The difference is the stale scale: a replay entry stored early keeps the statistics of that moment, so the same state appears in the buffer at several scales while the statistics move.
+The first run of this experiment had only raw and store-time, and normalisation looked harmful; the hypothesis written then (stale scales in replay) was tested with the sample-time arm and held.
+The raw agent learns too, which contradicted the original claim in `envs/pointmass.py`; that docstring now gives these numbers.
+In RL, BatchNorm itself is awkward for a related reason: batch statistics differ between replay batches and single-state action selection.
 
 ## Learning Values Across Many Orders of Magnitude (Hado van Hasselt, Arthur Guez, Matteo Hessel, Volodymyr Mnih, David Silver, 2016)
 
@@ -49,7 +58,8 @@ DQN on Atari had clipped rewards to [−1, 1] instead, which keeps the scale fix
 | $W \leftarrow W\sigma_{old}/\sigma$, $b \leftarrow (\sigma_{old} b + \mu_{old} - \mu)/\sigma$ | preserve outputs | `algos/popart_dqn.py:68-69` |
 | $\mathrm{Huber}(f - (y - \mu)/\sigma)$ | regress normalised targets | `algos/popart_dqn.py:106` |
 
-After a statistics jump to μ ≈ 463 and σ ≈ 593, no Q value moved by more than 3.3e-5 (float32 rounding at that scale).
+Notebook section 2 (`torch.manual_seed(0)`, 256 inputs): after one statistics jump to μ = 529, σ = 615, no Q value moved by more than 3.6e-4;
+after five jumps to μ = 4,007, σ = 1,348, by no more than 2.7e-3. Both are float32 rounding at that scale. Without POP every Q would move by about the change in μ.
 
 ### What it got wrong / what came after
 

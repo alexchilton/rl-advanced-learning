@@ -6,6 +6,11 @@ Chain(20) and Chain(30), one-hot observations, 50,000 steps, 5 seeds each. Per
 run: the step the goal is first reached, and the exact return of the greedy
 policy read from the extrinsic value head every 10,000 steps. One JSON per run
 in experiments/results/exploration/, so --resume skips finished runs.
+
+Every chain is wrapped in `envs.chain.ScrambledActions`, a fresh action
+permutation per state and per seed. On the plain chain RIGHT is action 1
+everywhere, and an untrained network whose argmax favours index 1 walks to the
+goal without exploring; results from before the wrapper were partly that.
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ def main():
 
     from algos import rnd
     from algos.dqn import q_table
-    from envs.chain import Chain
+    from envs.chain import Chain, ScrambledActions
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--resume", action="store_true")
@@ -36,10 +41,10 @@ def main():
     torch.set_num_threads(1)
     RESULTS.mkdir(parents=True, exist_ok=True)
     for n in LENGTHS:
-        env = Chain(n=n, max_steps=4 * n, obs_mode="onehot")
-        evaluate = lambda net: env.policy_return(q_table(net, env).argmax(1), 0.99)
         for name, beta in (("DQN", 0.0), ("DQN + RND", 1.0)):
             for seed in SEEDS:
+                env = ScrambledActions(Chain(n=n, max_steps=4 * n, obs_mode="onehot"), seed=seed)
+                evaluate = lambda net: env.policy_return(q_table(net, env).argmax(1), 0.99)
                 path = RESULTS / f"rnd_chain__n{n}__{name.replace(' + ', '_')}__seed{seed}.json"
                 if args.resume and path.exists():
                     print(f"skip {path.name}", flush=True)

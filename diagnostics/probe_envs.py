@@ -95,6 +95,27 @@ class ActionObservation(_Probe):
         return {-1.0: [1.0, -1.0], 1.0: [-1.0, 1.0]}
 
 
+class CoinFlip(_Probe):
+    """One action, obs 0, reward +1 with probability 1/4 and -1 otherwise, ends.
+
+    Not one of the five probes: its expected Q is -0.5, which says nothing new. Its
+    return DISTRIBUTION is the point: two spikes, 1/4 at +1 and 3/4 at -1, which a
+    distributional agent (`algos/c51_dqn.py`) must recover exactly.
+    """
+
+    p_win = 0.25
+
+    def step(self, action):
+        reward = 1.0 if self.rng.random() < self.p_win else -1.0
+        return np.array([0.0], dtype=np.float32), reward, True, False, {}
+
+    def expected_q(self, gamma):
+        return {0.0: [2 * self.p_win - 1]}
+
+    def return_distribution(self):
+        return {1.0: self.p_win, -1.0: 1 - self.p_win}
+
+
 PROBES = (("1 constant", Constant), ("2 observation", Observation), ("3 discount", Discount),
           ("4 action", Action), ("5 action x obs", ActionObservation))
 

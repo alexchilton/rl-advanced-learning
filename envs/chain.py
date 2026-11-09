@@ -154,6 +154,52 @@ def _baird_features():
     return features
 
 
+class ScrambledActions:
+    """A tabular env whose action indices mean different things in different states.
+
+    In `Chain`, RIGHT is action 1 in every state, so a network whose untrained
+    argmax happens to favour index 1 walks straight to the goal without exploring
+    at all. Measured: 3 of 5 freshly initialised DQN networks prefer "right" in
+    every one of Chain(20)'s states. A deep agent's result on the plain chain is
+    partly a measurement of its initialisation.
+
+    This wrapper draws, per state, a random permutation of the actions (the
+    construction Osband et al. 2019 use in Deep Sea), so no constant action index
+    solves the task. The underlying MDP is unchanged; `policy_return` maps a
+    policy back through the permutation before evaluating it exactly.
+    """
+
+    def __init__(self, env, seed=0):
+        self.env = env
+        rng = np.random.default_rng(seed)
+        self.perm = np.array([rng.permutation(env.n_actions) for _ in range(env.n_states)])
+        self.n_states, self.n_actions = env.n_states, env.n_actions
+
+    @property
+    def state(self):
+        return self.env.state
+
+    @state.setter
+    def state(self, value):
+        self.env.state = value
+
+    def observation(self, state):
+        return self.env.observation(state)
+
+    def reset(self, seed=None):
+        return self.env.reset(seed=seed)
+
+    def step(self, action):
+        return self.env.step(int(self.perm[self.env.state, int(action)]))
+
+    def policy_return(self, policy, gamma):
+        policy = np.asarray(policy)
+        return self.env.policy_return(self.perm[np.arange(self.n_states), policy], gamma)
+
+    def optimal_return(self, gamma):
+        return self.env.optimal_return(gamma)
+
+
 class Baird(TabularEnv):
     """Baird's counterexample: the deadly triad, minimal form.
 

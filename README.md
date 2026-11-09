@@ -54,7 +54,7 @@ did not catch.
 | --- | --- |
 | `GridWorld` | The workhorse. Four reward modes: sparse, dense, potential-shaped, and misspecified. |
 | `CliffWalking` | On-policy vs off-policy, in one picture. |
-| `Chain` | Exploration, the discount, long-horizon credit assignment. |
+| `Chain` | Exploration, the discount, long-horizon credit assignment. `ScrambledActions` permutes action meanings per state, so no constant action solves it. |
 | `Baird` | Baird's counterexample. The deadly triad, minimal form. |
 | `Bandit` | Exploration with nothing else attached. |
 | `PointMass` | Continuous control. Deliberately badly scaled, so normalisation has something to fix. |
@@ -86,11 +86,11 @@ Run them from the repo root, or after `pip install -e .`.
 | [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes; SARSA vs Q-learning on the cliff (17-step safe path vs 13-step edge); Dyna-Q planning | ~2 min |
 | [`imitation_01_bc_dagger_irl_gail`](notebooks/imitation_01_bc_dagger_irl_gail.ipynb) | BC, DAgger, MaxEnt IRL and GAIL on one 7,126-state racetrack, with what each is allowed to see | ~3 min |
 | [`offline_01_q_cql_bcq_iql`](notebooks/offline_01_q_cql_bcq_iql.ipynb) | naive offline Q (believes −1.84, gets −98.73), CQL, BCQ, IQL, four dataset qualities, offline-to-online | ~2 min |
-| [`deep_value_01_dqn_family`](notebooks/deep_value_01_dqn_family.ipynb) | probe environments catch a terminal-mask bug DQN hides on CartPole; replay and target network removed one at a time (no target: Q diverges to ~3e10); maximisation bias; DQN, Double, Dueling, PER, 3-step over 5 seeds | ~2 min live + stored sweep |
-| [`policy_gradient_01_reinforce_to_sac`](notebooks/policy_gradient_01_reinforce_to_sac.ipynb) | gradient variance under four weightings (baseline: 12x lower); REINFORCE, A2C, PPO; GAE λ; PPO epochs vs clip; DDPG, TD3 ablation, SAC temperature; a pendulum swing-up | ~4 min live + stored sweep |
-| [`exploration_01_bonus_curriculum_her`](notebooks/exploration_01_bonus_curriculum_her.ipynb) | Chain(30): ε-greedy never, optimistic init 1,300 steps, size curriculum 850; a count bonus inflates Q past any reachable return; RND with two value heads; HER 0% → 100% on 10-20 bits | ~2 min live + stored sweeps |
+| [`deep_value_01_dqn_family`](notebooks/deep_value_01_dqn_family.ipynb) | probe environments catch a terminal-mask bug DQN hides on CartPole; replay and target network removed one at a time (no target: Q diverges to ~3e10); maximisation bias; DQN, Double, Dueling, PER, 3-step, C51 and Noisy over 5 seeds; C51 recovers a coin flip's exact return distribution | ~2 min live + stored sweep |
+| [`policy_gradient_01_reinforce_to_sac`](notebooks/policy_gradient_01_reinforce_to_sac.ipynb) | gradient variance under four weightings (baseline: 12x lower); REINFORCE, A2C, TRPO, PPO (TRPO best on CartPole, curve average 497.6); TRPO's quadratic KL model against the real KL, δ swept; GAE λ; PPO epochs vs clip; DDPG, TD3 ablation, SAC temperature; a pendulum swing-up | ~4 min live + stored sweep |
+| [`exploration_01_bonus_curriculum_her`](notebooks/exploration_01_bonus_curriculum_her.ipynb) | Chain(30): ε-greedy never, optimistic init 1,300 steps, size curriculum 850; a learning-progress teacher against random task choice; a count bonus inflates Q past any reachable return; RND with two value heads (5/5 on scrambled chains, DQN 0/5 on Chain(30)); noisy nets never reach the goal there; HER 0% → 100% on 10-20 bits; a network curriculum forgets every earlier goal unless it rehearses | ~3 min live + stored sweeps |
 | [`preference_01_rlhf_dpo_grpo`](notebooks/preference_01_rlhf_dpo_grpo.ipynb) | toy task with a known true reward: reward-model accuracy, RLHF with REINFORCE / RLOO / GRPO, over-optimisation measured, biased and AI labelers, DPO | ~1 min live + stored sweeps |
-| [`normalisation_01_popart_obs`](notebooks/normalisation_01_popart_obs.ipynb) | rewards ×1000: DQN diverges, PopArt recovers; observation normalisation on PointMass (slower here, measured) | seconds + stored sweeps |
+| [`normalisation_01_popart_obs`](notebooks/normalisation_01_popart_obs.ipynb) | rewards ×1000: DQN diverges, PopArt recovers; observation normalisation on PointMass: worst when applied as transitions are stored, best when applied as batches are sampled | seconds + stored sweeps |
 | [`kaggle_01_behaviour_cloning_fails`](notebooks/kaggle_01_behaviour_cloning_fails.ipynb) | self-contained BC vs DAgger, no repo imports | ~2 min |
 | [`jax_01_lunar_lander`](notebooks/jax_01_lunar_lander.ipynb) | PPO from scratch in Flax/Optax, SB3 vs SBX, gymnax | long; see the notebook |
 | [`case_smart_buildings_residual_ppo`](notebooks/case_smart_buildings_residual_ppo.ipynb) | a run that does not learn, kept | see the notebook |
@@ -118,8 +118,8 @@ tests/         the guarantees, asserted
 ```
 
 Planned and not built yet: `broken/` (working algorithms with one realistic bug each),
-`cookbook/` (symptom tables, defaults, checklists), and the probe environments, health
-panel in `diagnostics/`.
+`cookbook/` (symptom tables, defaults, checklists), and a reusable health panel in
+`diagnostics/` (the notebooks plot their own).
 
 ## Case studies
 

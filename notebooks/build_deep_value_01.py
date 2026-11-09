@@ -16,10 +16,10 @@ def code(text):
 
 # ----------------------------------------------------------------------
 md(r"""
-# DQN and the four fixes: probes first, CartPole second
+# DQN and the six Rainbow parts: probes first, CartPole second
 
-**Code:** [`algos/dqn.py`](../algos/dqn.py) · [`double_dqn.py`](../algos/double_dqn.py) · [`dueling_dqn.py`](../algos/dueling_dqn.py) · [`per_dqn.py`](../algos/per_dqn.py) · [`n_step_dqn.py`](../algos/n_step_dqn.py) · [`double_q.py`](../algos/double_q.py) · [`diagnostics/probe_envs.py`](../diagnostics/probe_envs.py) · [`experiments/deep_value_sweep.py`](../experiments/deep_value_sweep.py)
-**Papers:** Mnih 2013 ([PDF](../papers/deep-value/mnih-2013-atari-dqn.pdf)), Mnih 2015 ([PDF](../papers/deep-value/mnih-2015-dqn-nature.pdf)), van Hasselt 2010 ([PDF](../papers/tabular/vanhasselt-2010-doubleq.pdf)) and 2015 ([PDF](../papers/deep-value/vanhasselt-2015-double-dqn.pdf)), Schaul 2015 ([PDF](../papers/deep-value/schaul-2015-per.pdf)), Wang 2016 ([PDF](../papers/deep-value/wang-2016-dueling.pdf)), Hessel 2017 ([PDF](../papers/deep-value/hessel-2017-rainbow.pdf)) ·
+**Code:** [`algos/dqn.py`](../algos/dqn.py) · [`double_dqn.py`](../algos/double_dqn.py) · [`dueling_dqn.py`](../algos/dueling_dqn.py) · [`per_dqn.py`](../algos/per_dqn.py) · [`n_step_dqn.py`](../algos/n_step_dqn.py) · [`c51_dqn.py`](../algos/c51_dqn.py) · [`noisy_dqn.py`](../algos/noisy_dqn.py) · [`double_q.py`](../algos/double_q.py) · [`diagnostics/probe_envs.py`](../diagnostics/probe_envs.py) · [`experiments/deep_value_sweep.py`](../experiments/deep_value_sweep.py)
+**Papers:** Mnih 2013 ([PDF](../papers/deep-value/mnih-2013-atari-dqn.pdf)), Mnih 2015 ([PDF](../papers/deep-value/mnih-2015-dqn-nature.pdf)), van Hasselt 2010 ([PDF](../papers/tabular/vanhasselt-2010-doubleq.pdf)) and 2015 ([PDF](../papers/deep-value/vanhasselt-2015-double-dqn.pdf)), Schaul 2015 ([PDF](../papers/deep-value/schaul-2015-per.pdf)), Wang 2016 ([PDF](../papers/deep-value/wang-2016-dueling.pdf)), Bellemare 2017 C51 ([PDF](../papers/deep-value/bellemare-2017-distributional.pdf)), Fortunato 2017 Noisy ([PDF](../papers/deep-value/fortunato-2017-noisy-nets.pdf)), Hessel 2017 ([PDF](../papers/deep-value/hessel-2017-rainbow.pdf)) ·
 **Notes:** [`papers/deep-value/notes.md`](../papers/deep-value/notes.md)
 
 What you will see:
@@ -28,9 +28,10 @@ What you will see:
 2. One DQN run on CartPole with its **health panel**: return, mean Q, TD error, gradient norm.
 3. **Replay and the target network removed one at a time**, over 5 seeds.
 4. **Maximisation bias**, measured exactly on a 3-state MDP: Q-learning prefers the losing branch, Double Q does not.
-5. **DQN, Double, Dueling, PER and 3-step** on CartPole, 5 seeds each, including how far each network's value estimate is from the return it actually gets.
+5. **DQN, Double, Dueling, PER, 3-step, C51 and Noisy** on CartPole, 5 seeds each, including how far each network's value estimate is from the return it actually gets.
+6. **C51 learns a distribution:** checked on a coin flip whose return distribution is known exactly. **Noisy nets** learn how much noise to keep.
 
-Sections 1, 2 and 4 run live (about 1.5 minutes on CPU). Sections 3 and 5 are 45 runs of 100,000 steps (about 25 minutes); they are read from
+Sections 2, 3, 5 and 7 (first half) run live (about 2 minutes on CPU). Sections 4 and 6 are 55 runs of 100,000 steps (about 35 minutes); they are read from
 `experiments/results/deep_value/`, and `python experiments/deep_value_sweep.py ablation` / `compare` regenerates them.
 """)
 
@@ -295,7 +296,7 @@ for name, curve in left.items():
 
 # ----------------------------------------------------------------------
 md(r"""
-## 6. DQN, Double, Dueling, PER and 3-step on CartPole
+## 6. DQN, Double, Dueling, PER, 3-step, C51 and Noisy on CartPole
 
 Each file changes one thing in `algos/dqn.py`, marked in the source:
 
@@ -305,6 +306,8 @@ Each file changes one thing in `algos/dqn.py`, marked in the source:
 | Dueling | network head $Q = V + A - \bar A$ | `dueling_dqn.py:34-45` |
 | PER | sample by $\lvert\delta\rvert^{0.6}$, importance weights $w$, β → 1 | `per_dqn.py:119`, `141-148` |
 | 3-step | $r_t + \gamma r_{t+1} + \gamma^2 r_{t+2} + \gamma^3 \max Q(s_{t+3})$ | `n_step_dqn.py:52-64`, `85-87` |
+| C51 | 51 probabilities per action on atoms 0..100, projected target, cross-entropy | `c51_dqn.py`, `project` and the marked update |
+| Noisy | weights $\mu + \sigma\varepsilon$, ε resampled every step, no ε-greedy | `noisy_dqn.py`, `NoisyLinear` and the marked step |
 
 5 seeds × 100,000 steps each, from `experiments/deep_value_sweep.py compare`.
 """)
@@ -312,7 +315,7 @@ Each file changes one thing in `algos/dqn.py`, marked in the source:
 code(r"""
 compare = load("compare")
 table(compare)
-curves(compare, "five variants on CartPole")
+curves(compare, "seven variants on CartPole")
 
 fig, ax = plt.subplots(figsize=(5.5, 4.5))
 for name, results in compare.items():
@@ -327,14 +330,64 @@ md(r"""
 - **Double DQN** is the only variant that predicts **less** than it gets (88.05 against 97.51). Its curve average is second best (287.1).
 - **PER** learns sooner (curve average 300.2) and ends less consistently (final median 316.1).
 - **Dueling** does not beat DQN on CartPole (226.9 against 231.3).
+- **C51** has the second-best curve (377.7) and ends at 500 on 4 of 5 seeds; it predicts 94.92 against 99.00 received.
+- **Noisy** is the only variant that ends at 500 on all 5 seeds (curve average 307.5).
 
 Five seeds and one environment: these rank the variants on CartPole, not in general. Rainbow's own ablation, on Atari, ranked PER and n-step as the most important, and n-step agrees here.
 
-## 7. Rainbow: what is and is not here
+## 7. The last two Rainbow parts: a distribution, and learned noise
 
-Rainbow (Hessel et al. 2017) combines six components. Four are built here as separate files: Double, Dueling, PER and n-step.
-Not built: **distributional** value heads (C51) and **noisy networks** for exploration, and there is no single file combining all of them.
+Rainbow (Hessel et al. 2017) combines six components. All six are built here as separate files; there is no single file combining them.
 The Rainbow paper's own ablation found PER and n-step mattered most on Atari; CartPole is too easy to say anything about that.
+
+**C51 learns the whole return distribution.** On CartPole that only shows as a mean. On a coin flip it can be checked exactly:
+one state, reward +1 with probability 1/4 and −1 otherwise ([`diagnostics/probe_envs.py`](../diagnostics/probe_envs.py), `CoinFlip`).
+DQN learns the mean, −0.5; C51 must put 1/4 of its mass on +1 and 3/4 on −1. 3,000 steps, live.
+""")
+
+code(r"""
+from algos import c51_dqn
+from diagnostics.probe_envs import CoinFlip
+t0 = time.time()
+probe = dict(learning_starts=200, buffer_size=5_000, target_update=100)
+coin_net, _ = c51_dqn.train(CoinFlip(), n_steps=3_000, v_min=-2.0, v_max=2.0, n_atoms=41, **probe)
+dqn_net, _ = dqn.train(CoinFlip(), n_steps=3_000, **probe)
+with torch.no_grad():
+    p = coin_net.distribution(torch.zeros(1, 1))[0, 0].numpy()
+    dqn_q = float(dqn_net(torch.zeros(1, 1))[0, 0])
+z = coin_net.support.numpy()
+fig, ax = plt.subplots(figsize=(7, 3))
+ax.bar(z, p, width=0.08, label="C51: learned probabilities")
+ax.scatter([-1, 1], [0.75, 0.25], color="k", zorder=3, label="exact distribution")
+ax.axvline(float((p * z).sum()), color="tab:orange", ls="--", label=f"C51 mean {float((p * z).sum()):.3f}")
+ax.axvline(dqn_q, color="tab:red", ls=":", label=f"DQN's Q {dqn_q:.3f}")
+ax.set_xlabel("return"); ax.set_ylabel("probability"); ax.legend(fontsize=8); ax.set_title("coin flip: the return distribution")
+plt.show()
+print(f"mass at +1: {p[np.argmin(abs(z - 1))]:.3f} (exact 0.25)   mass at -1: {p[np.argmin(abs(z + 1))]:.3f} (exact 0.75)"
+      f"   ({time.time() - t0:.0f} s)")
+""")
+
+md(r"""
+**Noisy nets learn how much to explore.** Each noisy weight is $\mu + \sigma\varepsilon$, and σ is trained by the same loss as μ.
+Below, the mean |σ| of the noisy layers over the 5 CartPole runs of section 6. It starts at $0.5/\sqrt{\text{fan-in}}$ = 0.044.
+""")
+
+code(r"""
+fig, ax = plt.subplots(figsize=(7, 3))
+for r in compare["noisy_dqn"]:
+    ax.plot([e["step"] for e in r["log"]], [e["sigma"] for e in r["log"]], color="tab:purple", alpha=0.7)
+ax.axhline(0.5 / np.sqrt(128), color="k", ls=":", lw=1, label="initial σ")
+ax.set_xlabel("environment steps"); ax.set_ylabel("mean |σ|"); ax.set_title("Noisy DQN on CartPole: the learned noise scale")
+ax.legend(fontsize=8); plt.show()
+print("mean |σ| at the end, per seed:", [round(r["log"][-1]["sigma"], 4) for r in compare["noisy_dqn"]])
+""")
+
+md(r"""
+Measured: σ **rises** on all 5 seeds, from 0.044 to between 0.065 and 0.072 at the end, and the rise slows.
+The loss is free to push σ down and does not: on CartPole the greedy policy reaches 500 with the noise on, so the noise costs little.
+Learning the noise scale does not mean the noise goes away.
+
+Whether noise beats ε-greedy where exploration is the whole problem is measured on long chains in [`exploration_01_bonus_curriculum_her.ipynb`](exploration_01_bonus_curriculum_her.ipynb), section 6.
 
 ## 8. What breaks, and how you would know
 
@@ -347,6 +400,10 @@ The Rainbow paper's own ablation found PER and n-step mattered most on Atari; Ca
 | Double DQN = DQN everywhere | the argmax is taken on the target net | `double_dqn.py:66` |
 | PER replays a few transitions forever | priorities not updated, or ε = 0 | `per_dqn.py:100-103` |
 | n-step values off by a factor ≈ γ^(n−1) | bootstrap discounted by γ instead of γ^k | `n_step_dqn.py:85-87` |
+| C51 mean Q pinned at V_MIN or V_MAX | the support does not cover the returns | `c51_dqn.py`, `V_MIN, V_MAX` |
+| C51 target rows sum to less than 1 | atoms landing on a grid point get zero weight | `c51_dqn.py`, `project` |
+| Noisy DQN explores no more than greedy DQN | noise never resampled, or σ left out of the optimiser | `noisy_dqn.py`, `reset_noise` |
+| Noisy evaluation scores jump between identical checkpoints | evaluating with the noise on | `net.eval()` before scoring |
 """)
 
 

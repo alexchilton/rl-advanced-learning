@@ -26,7 +26,7 @@ Normalisation changes nothing about the mathematics of a problem and a great dea
 
 1. **Rewards ×1000 on CartPole.** The optimal policy is unchanged. DQN as-is, clipped rewards, the known scale divided out, and PopArt.
 2. **PopArt preserves outputs:** its statistics can move without changing a single Q value.
-3. **Observations on very different scales** (PointMass): TD3 with raw inputs against a running mean/std normaliser.
+3. **Observations on very different scales** (PointMass): TD3 with raw inputs, and with a running mean/std normaliser applied when a transition is stored or when a batch is sampled.
 
 Section 2 runs live; sections 1 and 3 read `experiments/results/normalisation/` (`python experiments/reward_normalisation.py`, `python experiments/obs_normalisation.py`).
 """)
@@ -140,7 +140,14 @@ print("\nWithout the rescaling (ART without POP), the same updates would move ev
 md(r"""
 ## 3. Badly scaled observations
 
-TD3 on PointMass, 30,000 steps, 3 seeds, raw observations against observations passed through a running mean/std normaliser (updated during training, frozen during evaluation).
+TD3 on PointMass, 30,000 steps, 3 seeds. The running mean/std normaliser is updated during training and frozen during evaluation. What differs is **when** it is applied:
+
+| mode | what the replay buffer holds | what a training batch sees |
+| --- | --- | --- |
+| raw | raw observations | raw observations |
+| store | observations normalised with the statistics **at the time they were collected** | those, unchanged |
+| sample | raw observations | normalised with the **current** statistics (`td3.train(obs_transform=...)`) |
+
 The reference is the hand-written PD controller in `PointMass.expert_action`.
 """)
 
@@ -148,23 +155,26 @@ code(r"""
 obs_rows = load("obs__")
 expert = obs_rows[0]["expert"]
 print(f"PD controller return: {expert:.2f}\n")
-for normalise, label in ((False, "raw"), (True, "normalised")):
-    runs = [r for r in obs_rows if r["normalise"] == normalise]
+colours = {"raw": "tab:grey", "store": "tab:red", "sample": "tab:blue"}
+plt.figure(figsize=(8, 3.6))
+for mode, colour in colours.items():
+    runs = [r for r in obs_rows if r["mode"] == mode]
     final = [round(r["log"][-1]["score"], 2) for r in runs]
-    print(f"{label:>10}: final return per seed {final}")
+    at_9k = [round(next(e["score"] for e in r["log"] if e["step"] == 9_000), 1) for r in runs]
+    print(f"{mode:>7}: return at 9,000 steps {at_9k}   final {final}")
     for r in runs:
-        plt.plot([e["step"] for e in r["log"]], [e["score"] for e in r["log"]], color="tab:blue" if normalise else "tab:grey",
-                 alpha=0.8, label=label if r is runs[0] else None)
+        plt.plot([e["step"] for e in r["log"]], [e["score"] for e in r["log"]], color=colour, alpha=0.8,
+                 label=mode if r is runs[0] else None)
 plt.axhline(expert, color="k", ls="--", lw=1, label="PD controller")
-plt.xlabel("environment steps"); plt.ylabel("return"); plt.legend(); plt.title("TD3 on PointMass"); plt.show()
+plt.ylim(-250, 5); plt.xlabel("environment steps"); plt.ylabel("return"); plt.legend(); plt.title("TD3 on PointMass"); plt.show()
 """)
 
 md(r"""
-The result goes against expectation, and against the claim in `envs/pointmass.py`. **Raw** observations learn faster here: every raw seed reaches about −15 within 6,000 steps and ends between −7.6 and −5.4, better than the PD controller.
-The normalised runs are slower on every seed and end at −71.9, −17.6 and −5.1.
+- **Store-time normalisation is worst** on every seed: −71.9, −17.6 and −5.1 at the end. A replay entry from step 1,000 keeps the scale of the step-1,000 statistics for the rest of the run, so the same state appears in the buffer at several different scales while the statistics move.
+- **Sample-time normalisation is best** on every seed: every seed is within −5.3 by 15,000 steps and ends between −4.3 and −4.1, better than the PD controller (−13.3).
+- **Raw** observations learn too, and end between −7.6 and −5.4. The claim this environment was written with, that a raw agent "mostly does not learn", is wrong for TD3 at this budget.
 
-HYPOTHESIS (unverified): the normaliser is applied when observations are stored, so replay entries from early training sit on a different scale from later ones while the statistics are still moving.
-Storing raw observations and normalising when a batch is sampled would test it. As measured, a running normaliser is not a free fix for an off-policy agent.
+The first version of this notebook had only raw and store, and normalisation looked harmful. The cause was where the normaliser sat, not normalisation itself. Normalise what the networks see, not what the buffer stores.
 
 ## 4. What breaks, and how you would know
 
@@ -174,6 +184,7 @@ Storing raw observations and normalising when a batch is sampled would test it. 
 | clipped rewards learn a different policy | clipping erases magnitude; fine on CartPole (all +1), wrong where rewards differ in size |
 | PopArt collapses whenever the statistics move | the last layer is not rescaled: ART without POP |
 | a correct agent does nothing on a new environment | observation scales differ by orders of magnitude; normalise inputs |
+| an off-policy agent learns slower with a normaliser than without | observations normalised before they go into replay; normalise at sample time |
 | evaluation differs from training with a normaliser | the statistics kept updating during evaluation, or were not saved with the model |
 """)
 

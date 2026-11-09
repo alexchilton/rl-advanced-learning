@@ -18,8 +18,8 @@ def code(text):
 md(r"""
 # Exploration: bonuses, curricula and hindsight on sparse rewards
 
-**Code:** [`count_based_exploration.py`](../algos/count_based_exploration.py) · [`curriculum_reverse.py`](../algos/curriculum_reverse.py) · [`curriculum_size.py`](../algos/curriculum_size.py) · [`rnd.py`](../algos/rnd.py) · [`her.py`](../algos/her.py) · [`envs/bit_flip.py`](../envs/bit_flip.py) · [`experiments/curriculum_vs_exploration.py`](../experiments/curriculum_vs_exploration.py) · [`experiments/rnd_chain.py`](../experiments/rnd_chain.py)
-**Papers:** Bengio 2009 ([PDF](../papers/exploration-curriculum/bengio-2009-curriculum.pdf)), Bellemare 2016 ([PDF](../papers/exploration-curriculum/bellemare-2016-count-based.pdf)), Andrychowicz 2017 HER ([PDF](../papers/exploration-curriculum/andrychowicz-2017-her.pdf)), Florensa 2017 ([PDF](../papers/exploration-curriculum/florensa-2017-reverse-curriculum.pdf)), Burda 2018 RND ([PDF](../papers/exploration-curriculum/burda-2018-rnd.pdf)) ·
+**Code:** [`count_based_exploration.py`](../algos/count_based_exploration.py) · [`curriculum_reverse.py`](../algos/curriculum_reverse.py) · [`curriculum_size.py`](../algos/curriculum_size.py) · [`curriculum_automatic.py`](../algos/curriculum_automatic.py) · [`curriculum_failure.py`](../algos/curriculum_failure.py) · [`noisy_dqn.py`](../algos/noisy_dqn.py) · [`rnd.py`](../algos/rnd.py) · [`her.py`](../algos/her.py) · [`envs/bit_flip.py`](../envs/bit_flip.py) · [`experiments/curriculum_vs_exploration.py`](../experiments/curriculum_vs_exploration.py) · [`experiments/rnd_chain.py`](../experiments/rnd_chain.py) · [`experiments/noisy_chain.py`](../experiments/noisy_chain.py) · [`experiments/curriculum_failure.py`](../experiments/curriculum_failure.py)
+**Papers:** Bengio 2009 ([PDF](../papers/exploration-curriculum/bengio-2009-curriculum.pdf)), Bellemare 2016 ([PDF](../papers/exploration-curriculum/bellemare-2016-count-based.pdf)), Andrychowicz 2017 HER ([PDF](../papers/exploration-curriculum/andrychowicz-2017-her.pdf)), Florensa 2017 ([PDF](../papers/exploration-curriculum/florensa-2017-reverse-curriculum.pdf)), Matiisen 2017 ([PDF](../papers/exploration-curriculum/matiisen-2017-teacher-student.pdf)), Fortunato 2017 Noisy ([PDF](../papers/deep-value/fortunato-2017-noisy-nets.pdf)), Burda 2018 RND ([PDF](../papers/exploration-curriculum/burda-2018-rnd.pdf)) ·
 **Notes:** [`papers/exploration-curriculum/notes.md`](../papers/exploration-curriculum/notes.md)
 
 On a sparse task nothing is learned until the reward is seen once. Every method here is a way of seeing it sooner.
@@ -28,13 +28,15 @@ What you will see:
 
 1. Why ε-greedy is not exploration: on a 30-state chain it reaches the goal with probability $2^{-29}$ per episode.
 2. Where each method sends the agent, as a picture of state visits.
-3. **Five methods on the same two tasks, one metric**: two curricula, a count bonus, optimistic initialisation, and ε-greedy.
+3. **Seven methods on the same two tasks, one metric**: four curricula (two hand-written, two chosen by a teacher or at random), a count bonus, optimistic initialisation, and ε-greedy.
 4. **The bonus trap:** a bonus added to the reward inflates the values the policy is read from. Measured on the count bonus and on a one-head RND.
-5. **RND with two value heads** on long chains.
+5. **RND with two value heads** on long chains, with the action indices scrambled per state so that an untrained network cannot walk to the goal by accident.
 6. **HER** on bit flipping: 0% for plain DQN from 10 bits, 100% with hindsight up to 20.
+7. **Noisy networks** against ε-greedy on the same scrambled chains.
+8. **A curriculum that forgets:** four goals trained in turn by one network, every goal re-evaluated throughout.
 
-Sections 1, 2, 4 and part of 6 run live (about 2 minutes on CPU). The rest reads `experiments/results/exploration/`;
-`python experiments/curriculum_vs_exploration.py`, `python experiments/rnd_chain.py` and `python algos/her.py` regenerate it.
+Sections 1, 3, part of 5 and part of 6 run live (about 2 minutes on CPU). The rest reads `experiments/results/exploration/`;
+`python experiments/curriculum_vs_exploration.py`, `rnd_chain.py`, `noisy_chain.py`, `curriculum_failure.py` and `python algos/her.py` regenerate it.
 """)
 
 code(r"""
@@ -120,7 +122,7 @@ axs[-1].set_xlabel("chain state (start = 0, goal = 29)"); plt.tight_layout(); pl
 
 # ----------------------------------------------------------------------
 md(r"""
-## 2. Five methods, two tasks, one metric
+## 2. Seven methods, two tasks, one metric
 
 Steps until the greedy policy, evaluated **exactly** from the real start, reaches 95% of the optimum. Every step counts, including the curricula's easy stages. 5 seeds, budget 200,000.
 
@@ -130,12 +132,14 @@ Steps until the greedy policy, evaluated **exactly** from the real start, reache
 | count bonus | $r + \beta/\sqrt{N(s,a)}$ | counts, so a finite or pseudo-counted state space |
 | reverse curriculum | start next to the goal, move outward ([`curriculum_reverse.py`](../algos/curriculum_reverse.py)) | **resetting to any state** |
 | size curriculum | solve a small instance, copy Q aligned at the goal ([`curriculum_size.py`](../algos/curriculum_size.py)) | **a family of tasks and a mapping between them** |
+| random task | start each episode in a random band of distance to the goal | resetting to any state |
+| learning progress | a teacher picks the band whose success rate is changing fastest ([`curriculum_automatic.py`](../algos/curriculum_automatic.py)) | resetting to any state |
 """)
 
 code(r"""
 data = json.loads((RESULTS / "curriculum_vs_exploration.json").read_text())
-methods = ["epsilon-greedy", "optimistic Q", "count bonus", "reverse curriculum", "size curriculum"]
-fig, axs = plt.subplots(1, 2, figsize=(13, 3.4))
+methods = ["epsilon-greedy", "optimistic Q", "count bonus", "reverse curriculum", "size curriculum", "random task", "learning progress"]
+fig, axs = plt.subplots(1, 2, figsize=(13, 4.2))
 for ax, task in zip(axs, data["table"]):
     print(task)
     for i, m in enumerate(methods):
@@ -151,8 +155,10 @@ plt.tight_layout(); plt.show()
 """)
 
 md(r"""
-- **Chain(30):** ε-greedy never solves it. The size curriculum (850) and optimistic Q (1,300) are fastest, then the reverse curriculum (17,500) and the count bonus (72,500).
-- **GridWorld 14×14:** ε-greedy is fine here (23,000). The size curriculum is still fastest (1,400). The count bonus **never** finishes, which section 3 explains.
+- **Chain(30):** ε-greedy never solves it. The size curriculum (850) and optimistic Q (1,300) are fastest, then the reverse curriculum (16,500), the learning-progress teacher (45,000), random bands (58,800) and the count bonus (72,500).
+- **GridWorld 14×14:** ε-greedy is fine here (23,000). The size curriculum is still fastest (1,400). Random bands (15,000) beat the learning-progress teacher (16,500) and the hand-written reverse schedule (20,000). The count bonus **never** finishes, which section 3 explains.
+- **The teacher against random:** the teacher wins on the chain and loses on the grid; on the grid random task choice is the best of the three start-distribution methods. Matiisen et al. report the same split: their teacher an order of magnitude faster than uniform sampling on a Minecraft maze, uniform sampling "competitive" on 2-D addition.
+- The reverse schedule decides when to move outward with extra greedy rollouts that are not counted as steps. The teacher uses only its training episodes. The comparison favours the reverse schedule.
 - The cheapest method, optimistic initialisation, is as good as anything that needs no extra machinery. Most tutorials skip it.
 - The size curriculum's lead depends on an unusually easy transfer: every cell of a chain or an open grid looks alike relative to the goal.
 """)
@@ -189,7 +195,7 @@ The left map is above 1 almost everywhere, though no return here can exceed 1: t
 Switching the bonus off does not repair it within 20,000 steps; values that high decay slowly.
 
 The same thing happened to RND written the obvious way, with one value head and the bonus added to the reward.
-On Chain(20) it ended with a greedy return of 0 on 4 of 5 seeds, its Q flat at about 1.438 for both actions in every state, above the largest achievable return of 1.0.
+On Chain(20) (the plain chain, before the scrambling of section 6) it ended with a greedy return of 0 on 4 of 5 seeds, its Q flat at about 1.438 for both actions in every state, above the largest achievable return of 1.0.
 Fading the bonus and recomputing it per batch did not help. The fix is the paper's design: a second value head.
 """)
 
@@ -200,7 +206,7 @@ md(r"""
 `algos/rnd.py`: a fixed random network $f$ and a predictor $\hat f$; novelty $\lVert \hat f(s') - f(s')\rVert^2$, normalised.
 The extrinsic head $Q_E$ learns the task reward; the intrinsic head $Q_I$ learns the novelty and ignores episode ends.
 The agent acts on $Q_E + \beta Q_I$; the policy that is evaluated is $Q_E$ alone, so the bonus never enters it.
-Chain(20) and Chain(30), one-hot observations, 50,000 steps, 5 seeds.
+Chain(20) and Chain(30), one-hot observations, 50,000 steps, 5 seeds. The action indices are scrambled per state (section 6 shows why).
 """)
 
 code(r"""
@@ -221,9 +227,11 @@ plt.show()
 """)
 
 md(r"""
-RND finds the goal sooner and ends with the optimal policy on every seed.
-Plain DQN's successes on a chain where a random walk succeeds with probability $2^{-19}$ or less are not exploration.
-HYPOTHESIS (unverified): the fresh network happens to prefer "right" in most states, and once ε is small it walks straight to the goal.
+RND reaches the goal on every seed, by step 3,802 on Chain(20) and 4,903 on Chain(30), and ends with the optimal policy on all 10 runs.
+DQN reaches it on 2 of 5 seeds on each chain, late (11,403 to 48,742 steps), and ends optimal on 2 of 5 and 0 of 5.
+
+The first run of this section used the plain chain, where "right" is the same action index in every state, and had DQN optimal on 4 of 5 and 2 of 5.
+Most of that was a fresh network that already preferred "right", not exploration; section 6 measures it.
 """)
 
 # ----------------------------------------------------------------------
@@ -267,7 +275,109 @@ axs[0].set_ylabel("success"); axs[0].legend(fontsize=8); plt.show()
 
 # ----------------------------------------------------------------------
 md(r"""
-## 6. What breaks, and how you would know
+## 6. Noisy networks against ε-greedy, on chains that cannot be solved by accident
+
+On the plain chain, "right" is action 1 in **every** state. A fresh network whose argmax happens to favour index 1 walks to the goal without exploring at all.
+Measured below: the share of Chain(20)'s states in which a freshly initialised network already prefers "right", for 5 seeds.
+""")
+
+code(r"""
+from algos.dqn import QNetwork
+from algos.noisy_dqn import NoisyQNetwork
+from envs.chain import ScrambledActions
+onehot = torch.eye(20)
+for name, make in (("DQN", lambda: QNetwork(20, 2)), ("Noisy DQN, mean weights", lambda: NoisyQNetwork(20, 2))):
+    shares = []
+    for seed in range(5):
+        torch.manual_seed(seed); net = make(); net.eval()
+        with torch.no_grad():
+            shares.append(float((net(onehot).argmax(1) == 1).float().mean()))
+    print(f"{name:>24}: share of states preferring 'right' before training {[round(x, 2) for x in shares]}")
+scrambled = ScrambledActions(Chain(n=20, max_steps=80, obs_mode="onehot"), seed=0)
+print(f"\nscrambled chain, seed 0: action index meaning 'right' per state {[int(np.argsort(p)[1]) for p in scrambled.perm]}")
+print(f"return of 'always action 0' {scrambled.policy_return(np.zeros(20, int), GAMMA):.3f}, "
+      f"'always action 1' {scrambled.policy_return(np.ones(20, int), GAMMA):.3f}, optimum {scrambled.optimal_return(GAMMA):.3f}")
+""")
+
+md(r"""
+Three of five fresh DQN networks prefer "right" in every state. The RND runs of section 4 and the runs below therefore use `envs.chain.ScrambledActions`: per state and per seed, a random permutation of what the action indices mean (the construction of Osband et al.'s Deep Sea).
+No constant action solves it, and the exact optimum is unchanged.
+
+The comparison ([`experiments/noisy_chain.py`](../experiments/noisy_chain.py)): DQN with ε decaying from 1 to 0.05, against Noisy DQN with ε = 0 and the weight noise resampled every step (the paper's DQN agent) or held for a whole episode. 50,000 steps, 5 seeds.
+""")
+
+code(r"""
+noisy_rows = [json.loads(p.read_text()) for p in sorted(RESULTS.glob("noisy_chain__*.json"))]
+agents = ["DQN (epsilon-greedy)", "Noisy DQN", "Noisy DQN, per episode"]
+fig, axs = plt.subplots(1, 2, figsize=(12, 3.2))
+for ax, n in zip(axs, (20, 30)):
+    for k, name in enumerate(agents):
+        sel = [r for r in noisy_rows if r["n"] == n and r["name"] == name]
+        firsts = [r["first_goal"] for r in sel]
+        solved = sum(r["log"][-1]["score"] >= 0.95 * r["optimum"] for r in sel)
+        print(f"Chain({n}) {name:>23}: first goal {firsts}; optimal at the end on {solved}/{len(sel)}")
+        ax.scatter([f if f is not None else 60_000 for f in firsts], [k] * len(firsts), s=30,
+                   c=["tab:blue" if f is not None else "tab:red" for f in firsts])
+    ax.set_yticks(range(len(agents)), agents); ax.axvline(50_000, color="k", ls=":", lw=1)
+    ax.set_title(f"Chain({n}): step the goal was first reached (red = never)"); ax.set_xlabel("environment steps")
+plt.tight_layout(); plt.show()
+""")
+
+md(r"""
+Noisy networks never reach the goal on either chain, whether the noise is resampled every step or held for the episode. ε-greedy reaches it on 2 of 5 seeds.
+
+Measured at initialisation: the weight noise changes the greedy action in 6.6% to 28.3% of (state, noise sample) pairs, over 5 seeds. ε-greedy at ε = 1 changes it in 50%.
+So at the start the noise explores less than ε-greedy's schedule does, and on a chain where one wrong step returns you to the start that difference compounds over every step.
+That this is the whole reason is a HYPOTHESIS (unverified); a larger σ₀ would test it.
+The original paper's gains are on Atari, not on chains built to defeat undirected exploration. Noise is undirected too: nothing about it seeks the unvisited states, which is what RND (section 4) and optimistic initialisation do.
+""")
+
+# ----------------------------------------------------------------------
+md(r"""
+## 7. A curriculum that forgets
+
+Every curriculum above uses a table, and a table cannot forget: each state has its own entry.
+A network can. [`algos/curriculum_failure.py`](../algos/curriculum_failure.py): a 7×7 grid, start in the centre, observation $[row, col, goal_{row}, goal_{col}]$, so **one** network can solve every goal.
+Stage k is goal k, the four corners in turn, 30,000 DQN steps each. Every goal is re-evaluated every 1,000 steps: the curve the plan says nobody plots.
+
+| arm | what is in the training batches |
+| --- | --- |
+| plain | replay of 2,000 transitions: the current goal only |
+| rehearsal | the same, but a quarter of episodes go to a goal from an earlier stage |
+| big replay | replay of 120,000: every transition of every stage is kept |
+
+5 seeds per arm, from [`experiments/curriculum_failure.py`](../experiments/curriculum_failure.py).
+""")
+
+code(r"""
+fail = {}
+for p in sorted(RESULTS.glob("curriculum_failure__*.json")):
+    r = json.loads(p.read_text()); fail.setdefault(r["name"], []).append(r)
+arms = ["plain", "rehearsal", "big replay"]
+fig, axs = plt.subplots(1, 3, figsize=(15, 3.2), sharey=True)
+for ax, arm in zip(axs, arms):
+    steps = [e["step"] for e in fail[arm][0]["log"]]
+    success = np.mean([[e["success"] for e in r["log"]] for r in fail[arm]], axis=0)   # (evals, goals)
+    for g in range(4):
+        ax.plot(steps, success[:, g], label=f"goal {g + 1}")
+    for k in range(1, 4):
+        ax.axvline(k * fail[arm][0]["stage_steps"], color="k", ls=":", lw=1)
+    ax.set_title(f"{arm}: share of seeds solving each goal"); ax.set_xlabel("environment steps (dotted = next stage)")
+axs[0].set_ylabel("greedy success"); axs[0].legend(fontsize=8); plt.show()
+print("seeds solving each goal after the last stage (goal 4 trained last):")
+for arm in arms:
+    print(f"  {arm:>10}: {np.sum([r['log'][-1]['success'] for r in fail[arm]], axis=0).tolist()} of {len(fail[arm])}")
+""")
+
+md(r"""
+- **Plain:** after the last stage, goals 1 to 3 are solved on **0 of 5** seeds, though each was solved when its own stage ended. Only the goal trained last survives. A curriculum that evaluates only the current stage would report success throughout.
+- **Rehearsal:** a quarter of episodes on earlier goals keeps them: 5, 4, 4 and 5 of 5 seeds at the end.
+- **Big replay:** all four goals on 5 of 5. A buffer that keeps old stages is rehearsal by another name, which is one reason ordinary DQN runs rarely show this.
+""")
+
+# ----------------------------------------------------------------------
+md(r"""
+## 8. What breaks, and how you would know
 
 | method | symptom | likely cause |
 | --- | --- | --- |
@@ -280,6 +390,11 @@ md(r"""
 | HER | relabelled goals from before the transition | "future" means a state reached at or after t |
 | reverse curriculum | start radius stops growing | success threshold out of reach at this ε and chunk size |
 | size curriculum | a stage takes as long as from scratch | the transfer map is misaligned with the goal |
+| any deep agent on a chain | solves it at step ~20, before any exploration | the same action index is "right" everywhere; scramble the actions (section 6) |
+| learning-progress teacher | keeps choosing the easiest task | progress measured as the success rate, not its change |
+| Noisy DQN | never leaves the start region | the noise rarely changes the greedy action; it is undirected (section 6) |
+| any curriculum with a network | early stages fail after later ones | forgetting; evaluate every stage, rehearse, or keep old data in replay (section 7) |
+| reverse curriculum or bands | a start counts as success in one step, with no reward | the absorbing goal cell was a start state (`distance_to_goal` now excludes it) |
 """)
 
 
