@@ -30,6 +30,7 @@ What you will see:
 4. The learned values against the true values, cell by cell.
 5. Four reward functions on the same grid: dense learns fastest, potential-based shaping is *slower* than sparse on large grids, and a reward that looks almost correct is never solved.
 6. SARSA against Q-learning on the cliff: one term of the target apart, two different policies.
+7. Dyna-Q: a model learned from experience, replayed for planning.
 
 Runs on CPU in about two minutes. Run from the repo root (`jupyter lab` at the top level) or with the repo installed (`pip install -e .`).
 """)
@@ -348,7 +349,42 @@ That measurement is recorded at the top of [`algos/sarsa.py`](../algos/sarsa.py)
 
 # ----------------------------------------------------------------------
 md(r"""
-## 7. What breaks, and how you would know
+## 7. Dyna-Q: planning with a learned model
+
+Q-learning uses each real transition once. Dyna-Q ([`algos/dyna_q.py`](../algos/dyna_q.py), Sutton 1990, [PDF](../papers/tabular/sutton-1990-dyna.pdf)) also stores it, model[s, a] = (r, s′),
+and after every real step replays n remembered transitions through the same update. Real experience is expensive; replaying memory is cheap.
+A 10×10 sparse grid with a wall, 3 seeds per setting; the metric is real environment steps until the greedy policy is exactly optimal.
+""")
+
+code(r"""
+from algos import dyna_q
+
+maze = GridWorld(size=10, reward_mode="sparse", walls=[(r, 4) for r in range(0, 8)], max_steps=300)
+maze_optimal = maze.optimal_return(dyna_q.GAMMA)
+fig, axs = plt.subplots(1, 2, figsize=(12, 4), gridspec_kw=dict(width_ratios=[1, 1.4]))
+grid_figure(maze, axs[0], values=maze.true_v(dyna_q.GAMMA), policy=maze.optimal_policy(dyna_q.GAMMA), title="the maze, exact V* and policy")
+print(f"{'planning steps':>15} {'real steps to optimal, per seed':>34}")
+for n in (0, 5, 50):
+    hits = []
+    for seed in range(3):
+        _, curve = dyna_q.train(maze, n_steps=15_000, planning_steps=n, seed=seed)
+        hits.append(next((s for s, v in curve if v >= maze_optimal - 1e-6), None))
+        if seed == 0:
+            axs[1].plot(*zip(*curve), label=f"n = {n}")
+    print(f"{n:>15} {str(hits):>34}")
+axs[1].axhline(maze_optimal, color="k", ls="--", lw=1); axs[1].set_xlabel("real environment steps")
+axs[1].set_ylabel("exact return of greedy policy"); axs[1].set_title("seed 0"); axs[1].legend()
+plt.show()
+""")
+
+md(r"""
+Measured over 5 seeds by `python algos/dyna_q.py`: median 9,300 real steps with no planning, 1,800 with 5 planning steps, 1,000 with 50.
+The model here keeps only the last outcome per (s, a), which is exact on this deterministic grid and would be wrong on a stochastic one.
+""")
+
+# ----------------------------------------------------------------------
+md(r"""
+## 8. What breaks, and how you would know
 
 From the bottom of [`algos/q_learning.py`](../algos/q_learning.py):
 

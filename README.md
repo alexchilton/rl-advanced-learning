@@ -8,8 +8,8 @@ the other case: the run that does not learn, produces no error, and looks fine.
 Every algorithm here ships with what breaks it, how you would notice, and how to
 tell a bug from a hard problem.
 
-**Status:** tabular, deep value, policy gradient, imitation and offline tiers are built, each with a
-notebook. Exploration, preference/LLM and normalisation follow. See [`docs/rl-curriculum-plan.md`](docs/rl-curriculum-plan.md) for the
+**Status:** tabular, deep value, policy gradient, imitation and offline, exploration, preference (on a toy
+task, no real LLM) and normalisation tiers are built, each with a notebook. See [`docs/rl-curriculum-plan.md`](docs/rl-curriculum-plan.md) for the
 full plan.
 
 ## The idea
@@ -83,11 +83,14 @@ Run them from the repo root, or after `pip install -e .`.
 | notebook | what it covers | runtime |
 | --- | --- | --- |
 | [`00_ground_truth`](notebooks/00_ground_truth.ipynb) | exact solutions, exact policy scoring, the terminal-mask bug, reward hacking vs the discount | seconds |
-| [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes; SARSA vs Q-learning on the cliff (17-step safe path vs 13-step edge) | ~1 min |
+| [`tabular_01_q_learning`](notebooks/tabular_01_q_learning.ipynb) | Q-learning against the exact optimum; `np.argmax` ties score 0.0 where random ties score 0.5133; four reward modes; SARSA vs Q-learning on the cliff (17-step safe path vs 13-step edge); Dyna-Q planning | ~2 min |
 | [`imitation_01_bc_dagger_irl_gail`](notebooks/imitation_01_bc_dagger_irl_gail.ipynb) | BC, DAgger, MaxEnt IRL and GAIL on one 7,126-state racetrack, with what each is allowed to see | ~3 min |
 | [`offline_01_q_cql_bcq_iql`](notebooks/offline_01_q_cql_bcq_iql.ipynb) | naive offline Q (believes −1.84, gets −98.73), CQL, BCQ, IQL, four dataset qualities, offline-to-online | ~2 min |
 | [`deep_value_01_dqn_family`](notebooks/deep_value_01_dqn_family.ipynb) | probe environments catch a terminal-mask bug DQN hides on CartPole; replay and target network removed one at a time (no target: Q diverges to ~3e10); maximisation bias; DQN, Double, Dueling, PER, 3-step over 5 seeds | ~2 min live + stored sweep |
 | [`policy_gradient_01_reinforce_to_sac`](notebooks/policy_gradient_01_reinforce_to_sac.ipynb) | gradient variance under four weightings (baseline: 12x lower); REINFORCE, A2C, PPO; GAE λ; PPO epochs vs clip; DDPG, TD3 ablation, SAC temperature; a pendulum swing-up | ~4 min live + stored sweep |
+| [`exploration_01_bonus_curriculum_her`](notebooks/exploration_01_bonus_curriculum_her.ipynb) | Chain(30): ε-greedy never, optimistic init 1,300 steps, size curriculum 850; a count bonus inflates Q past any reachable return; RND with two value heads; HER 0% → 100% on 10-20 bits | ~2 min live + stored sweeps |
+| [`preference_01_rlhf_dpo_grpo`](notebooks/preference_01_rlhf_dpo_grpo.ipynb) | toy task with a known true reward: reward-model accuracy, RLHF with REINFORCE / RLOO / GRPO, over-optimisation measured, biased and AI labelers, DPO | ~1 min live + stored sweeps |
+| [`normalisation_01_popart_obs`](notebooks/normalisation_01_popart_obs.ipynb) | rewards ×1000: DQN diverges, PopArt recovers; observation normalisation on PointMass (slower here, measured) | seconds + stored sweeps |
 | [`kaggle_01_behaviour_cloning_fails`](notebooks/kaggle_01_behaviour_cloning_fails.ipynb) | self-contained BC vs DAgger, no repo imports | ~2 min |
 | [`jax_01_lunar_lander`](notebooks/jax_01_lunar_lander.ipynb) | PPO from scratch in Flax/Optax, SB3 vs SBX, gymnax | long; see the notebook |
 | [`case_smart_buildings_residual_ppo`](notebooks/case_smart_buildings_residual_ppo.ipynb) | a run that does not learn, kept | see the notebook |

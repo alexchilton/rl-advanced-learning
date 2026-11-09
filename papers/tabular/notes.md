@@ -58,7 +58,25 @@ After: SARSA (on-policy, below), Double Q-learning, DQN.
 
 PDF: [`sutton-1990-dyna.pdf`](./sutton-1990-dyna.pdf)
 
-Not built in this repo yet. There is no Dyna file; the plan lists it in `docs/rl-curriculum-plan.md`.
+### The idea in one paragraph
+
+Learn a model of the environment from real experience and use it to generate extra, simulated updates.
+After each real step, Dyna-Q stores the transition in a table and replays n remembered transitions through the same Q-learning update.
+Learning, planning and acting share one value function; planning is just more updates from imagined data.
+
+### Equations to code
+
+| Equation | What it is | file:line in this repo |
+| --- | --- | --- |
+| model[s, a] ← (r, s′, terminated) | the learned model: last outcome per pair | `algos/dyna_q.py:53` |
+| n × Q-learning update on a random remembered (s, a) | planning | `algos/dyna_q.py:55-58` |
+
+### What it got wrong / what came after
+
+Measured (`python algos/dyna_q.py`, 10×10 sparse grid with a wall, 5 seeds), real steps until the greedy policy is optimal: 0 planning steps 9,300 (median), 5 → 1,800, 20 → 2,300, 50 → 1,000.
+Planning cuts the real experience needed by up to 9 times; the 20-step median is pulled up by one seed at 9,000.
+The model remembers one outcome per pair, which is exact here and wrong on a stochastic task; it also never notices when the world changes (Sutton & Barto's Dyna-Q+ adds a bonus for that).
+After: prioritised sweeping, and learned-model methods such as MuZero.
 
 ## On-Line Q-Learning Using Connectionist Systems (G. A. Rummery, M. Niranjan, 1994)
 
