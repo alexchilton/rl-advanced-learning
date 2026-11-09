@@ -1,0 +1,79 @@
+{
+ "budget": 200000,
+ "table": {
+  "Chain(30)": {
+   "epsilon-greedy": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "optimistic Q": [
+    1400,
+    1100,
+    1200,
+    1300,
+    1400
+   ],
+   "count bonus": [
+    88000,
+    59000,
+    84200,
+    59000,
+    72500
+   ],
+   "reverse curriculum": [
+    13000,
+    18000,
+    22000,
+    17500,
+    14500
+   ],
+   "size curriculum": [
+    950,
+    800,
+    1200,
+    800,
+    850
+   ]
+  },
+  "GridWorld 14x14": {
+   "epsilon-greedy": [
+    23000,
+    21600,
+    30300,
+    21000,
+    24200
+   ],
+   "optimistic Q": [
+    20700,
+    16700,
+    21100,
+    17800,
+    22100
+   ],
+   "count bonus": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "reverse curriculum": [
+    19500,
+    19000,
+    18000,
+    23500,
+    19000
+   ],
+   "size curriculum": [
+    1550,
+    1300,
+    1200,
+    1450,
+    1400
+   ]
+  }
+ }
+}
